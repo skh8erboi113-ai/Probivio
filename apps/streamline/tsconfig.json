@@ -1,0 +1,18 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "outDir": "./dist",
+    "rootDir": "./src",
+    "composite": true,
+    "noEmit": false,
+    "types": ["node"]
+  },
+  "references": [
+    { "path": "../../packages/types" },
+    { "path": "../../packages/validators" },
+    { "path": "../../packages/logger" },
+    { "path": "../../packages/db" }
+  ],
+  "include": ["src/**/*"],
+  "exclude": ["node_modules", "dist", "tests", "**/*.test.ts"]
+}
