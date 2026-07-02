@@ -6,23 +6,13 @@ import type {
   ProbateCase,
   ProbateExtractionResult,
   UsStateCode,
-  UsZipCode,
 } from '@listinglogic/types';
 import { ProbateStatus } from '@listinglogic/types';
 
 import { ConflictError, ValidationError } from '../errors/app-errors.js';
 
 import type { GeminiService } from './gemini.service.js';
-
-/**
- * Probate PDF scanner service.
- *
- * Flow:
- *   1. Accept PDF (base64 or URL)
- *   2. Extract text (via pdf-parse — added later)
- *   3. Send text to Gemini for structured extraction
- *   4. Validate + deduplicate + persist
- */
+import type { PdfParserService } from './pdf-parser.service.js';
 
 export class ProbateService {
   private readonly logger: Logger;
@@ -30,12 +20,27 @@ export class ProbateService {
   constructor(
     private readonly probateRepo: ProbateRepository,
     private readonly gemini: GeminiService,
+    private readonly pdfParser: PdfParserService,
     logger: Logger,
   ) {
     this.logger = logger.child({ service: 'probate' });
   }
 
-  public async scanPdf(
+  public async scanFromBase64(
+    operatorId: OperatorId,
+    base64Data: string,
+    filename?: string,
+  ): Promise<ProbateCase> {
+    const parsed = await this.pdfParser.extractFromBase64(base64Data, filename);
+    return this.processExtractedText(operatorId, parsed.text);
+  }
+
+  public async scanFromUrl(operatorId: OperatorId, url: string): Promise<ProbateCase> {
+    const parsed = await this.pdfParser.extractFromUrl(url);
+    return this.processExtractedText(operatorId, parsed.text, url);
+  }
+
+  private async processExtractedText(
     operatorId: OperatorId,
     pdfText: string,
     sourceDocumentUrl?: string,
@@ -45,21 +50,19 @@ export class ProbateService {
     }
 
     const extracted = await this.gemini.extractProbateData(pdfText);
-
     const validated = this.validateExtraction(extracted);
 
-    // Deduplicate
     const existing = await this.probateRepo.findByCaseNumber(
       operatorId,
       validated.caseNumber,
       validated.county,
-      validated.state,
+      validated.state as UsStateCode,
     );
     if (existing) {
       throw new ConflictError(`Probate case already exists: ${validated.caseNumber}`);
     }
 
-    const filedAt = validated.filedDate ?? (new Date().toISOString() as IsoTimestamp);
+    const filedAt = validated.filedDate ?? new Date().toISOString();
 
     const created = await this.probateRepo.create(operatorId, {
       caseNumber: validated.caseNumber,
@@ -69,10 +72,15 @@ export class ProbateService {
       filedAt: filedAt as IsoTimestamp,
       status: ProbateStatus.FILED,
       decedent: {
-        fullName: validated.decedent.fullName ?? 'UNKNOWN',
-        ...(validated.decedent.dateOfDeath && { dateOfDeath: validated.decedent.dateOfDeath as IsoTimestamp }),
-        ...(validated.decedent.lastKnownAddress && { lastKnownAddress: validated.decedent.lastKnownAddress }),
-        ...(validated.decedent.age !== undefined && validated.decedent.age !== null && { age: validated.decedent.age }),
+        fullName: extracted.decedent.fullName ?? 'UNKNOWN',
+        ...(extracted.decedent.dateOfDeath && {
+          dateOfDeath: extracted.decedent.dateOfDeath as IsoTimestamp,
+        }),
+        ...(extracted.decedent.lastKnownAddress && {
+          lastKnownAddress: extracted.decedent.lastKnownAddress,
+        }),
+        ...(extracted.decedent.age !== undefined &&
+          extracted.decedent.age !== null && { age: extracted.decedent.age }),
       },
       executors: extracted.executors
         .filter((e) => e.fullName)
@@ -88,7 +96,8 @@ export class ProbateService {
         .map((a) => ({
           type: (a.type ?? 'other') as 'real_property' | 'vehicle' | 'financial' | 'other',
           description: a.description ?? '',
-          ...(a.estimatedValue !== undefined && a.estimatedValue !== null && { estimatedValue: a.estimatedValue }),
+          ...(a.estimatedValue !== undefined &&
+            a.estimatedValue !== null && { estimatedValue: a.estimatedValue }),
           ...(a.address && { address: a.address }),
         })),
       extractionConfidence: extracted.confidence,
@@ -110,7 +119,6 @@ export class ProbateService {
     readonly county: string;
     readonly state: string;
     readonly filedDate: string | null;
-    readonly decedent: ProbateExtractionResult['decedent'];
   } {
     if (!raw.caseNumber) throw new ValidationError('Could not extract case number');
     if (!raw.county) throw new ValidationError('Could not extract county');
@@ -122,7 +130,6 @@ export class ProbateService {
       county: raw.county,
       state: raw.state.toUpperCase(),
       filedDate: raw.filedDate,
-      decedent: raw.decedent,
     };
   }
 }
@@ -130,7 +137,8 @@ export class ProbateService {
 export function createProbateService(deps: {
   readonly probateRepo: ProbateRepository;
   readonly gemini: GeminiService;
+  readonly pdfParser: PdfParserService;
   readonly logger: Logger;
 }): ProbateService {
-  return new ProbateService(deps.probateRepo, deps.gemini, deps.logger);
-      }
+  return new ProbateService(deps.probateRepo, deps.gemini, deps.pdfParser, deps.logger);
+}
