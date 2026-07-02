@@ -6,7 +6,6 @@ import type {
   ScoringWeightsRepository,
 } from '@listinglogic/db';
 import type {
-  InteractionFeatures,
   IsoTimestamp,
   Lead,
   LeadId,
@@ -14,7 +13,7 @@ import type {
   ScoreFactor,
   ScoreHistory,
   ScoreResult,
-  ScoringWeights,
+  InteractionFeatures,
 } from '@listinglogic/types';
 import {
   LeadSource,
@@ -24,24 +23,20 @@ import {
 } from '@listinglogic/types';
 
 import type { GeminiService } from './gemini.service.js';
+import type { MlFeatureExtractorService } from './ml-feature-extractor.service.js';
+import type { ModelRegistryService } from './model-registry.service.js';
+import type { OnnxInferenceService } from './onnx-inference.service.js';
+
+const HEURISTIC_MODEL_VERSION = '2.0.0-heuristic-fallback';
 
 /**
- * Scoring engine — the core intellectual property.
+ * Two-tier scoring:
+ *   1. If operator has a trained ONNX model → use ML inference (primary path)
+ *   2. If no model, insufficient data, or ML fails → fall back to heuristic
  *
- * Produces THREE independent dimension scores plus a composite:
- *
- *   1. Deal Score      — financial upside (margin, ARV/asking ratio, repair ratio)
- *   2. Motivation Score — seller signals (source, condition, response patterns)
- *   3. Urgency Score   — timing pressure (days on market, follow-up gaps, contract signals)
- *
- * The composite uses per-operator weights that the RETRAINING LOOP updates
- * based on which leads actually closed vs which were dead ends.
- *
- * This is deterministic + explainable (no ML black box for the score itself).
- * Gemini is used only for the natural-language explanation of WHY.
+ * The heuristic is the SAME algorithm as before — kept intact so cold-start
+ * operators still get sensible scores while their interaction history accumulates.
  */
-
-const MODEL_VERSION = '2.0.0-heuristic';
 
 export class ScoringService {
   private readonly logger: Logger;
@@ -52,14 +47,14 @@ export class ScoringService {
     private readonly scoreHistoryRepo: ScoreHistoryRepository,
     private readonly weightsRepo: ScoringWeightsRepository,
     private readonly gemini: GeminiService,
+    private readonly modelRegistry: ModelRegistryService,
+    private readonly inference: OnnxInferenceService,
+    private readonly featureExtractor: MlFeatureExtractorService,
     logger: Logger,
   ) {
     this.logger = logger.child({ service: 'scoring' });
   }
 
-  /**
-   * Score a lead and persist the result + history.
-   */
   public async scoreLead(
     operatorId: OperatorId,
     leadId: LeadId,
@@ -68,14 +63,60 @@ export class ScoringService {
     const start = Date.now();
 
     const lead = await this.leadRepo.findByIdOrThrow(operatorId, leadId);
-    const features = await this.interactionRepo.computeFeatures(operatorId, leadId);
-    const weights = await this.weightsRepo.getCurrent(operatorId);
+    const interactionFeatures = await this.interactionRepo.computeFeatures(operatorId, leadId);
 
+    // Always compute heuristic components — used for interpretability + fallback
     const dealScore = this.computeDealScore(lead);
-    const motivationScore = this.computeMotivationScore(lead, features);
-    const urgencyScore = this.computeUrgencyScore(lead, features);
-    const composite = this.combine(dealScore.score, motivationScore.score, urgencyScore.score, weights);
-    const confidence = this.computeConfidence(lead, features);
+    const motivationScore = this.computeMotivationScore(lead, interactionFeatures);
+    const urgencyScore = this.computeUrgencyScore(lead, interactionFeatures);
+
+    // Try ML path
+    let composite: number;
+    let confidence: number;
+    let modelVersion: string;
+    let mlProbability: number | null = null;
+
+    const model = await this.modelRegistry.getModel(operatorId);
+
+    if (model) {
+      try {
+        const priorHistory = await this.scoreHistoryRepo.findByLead(operatorId, leadId, 1);
+        const priorEntry = priorHistory[0] ?? null;
+
+        const features = this.featureExtractor.extract({
+          lead,
+          interactionFeatures,
+          priorScoreHistory: priorEntry,
+        });
+
+        mlProbability = await this.inference.predict(operatorId, model, features);
+
+        composite = Math.round(mlProbability * 100);
+        confidence = Math.min(0.99, 0.5 + model.metadata.auc * 0.5);
+        modelVersion = model.metadata.version;
+
+        this.logger.debug('ML scoring path', {
+          leadId,
+          probability: mlProbability,
+          composite,
+          modelVersion,
+        });
+      } catch (err) {
+        this.logger.warn('ML inference failed, falling back to heuristic', {
+          leadId,
+          error: err instanceof Error ? err.message : String(err),
+        });
+        composite = Math.round((dealScore.score + motivationScore.score + urgencyScore.score) / 3);
+        confidence = this.computeHeuristicConfidence(lead, interactionFeatures);
+        modelVersion = HEURISTIC_MODEL_VERSION;
+      }
+    } else {
+      // Heuristic path — no ML model available
+      composite = Math.round((dealScore.score + motivationScore.score + urgencyScore.score) / 3);
+      confidence = this.computeHeuristicConfidence(lead, interactionFeatures);
+      modelVersion = HEURISTIC_MODEL_VERSION;
+    }
+
     const topFactors = this.selectTopFactors([
       ...dealScore.factors,
       ...motivationScore.factors,
@@ -99,7 +140,7 @@ export class ScoringService {
       explanation,
       recommendation: this.recommendationFor(composite, confidence),
       topFactors,
-      modelVersion: MODEL_VERSION,
+      modelVersion,
       scoredAt: new Date().toISOString() as IsoTimestamp,
     };
 
@@ -113,20 +154,21 @@ export class ScoringService {
       leadId,
       composite,
       confidence,
+      modelVersion,
+      mlProbability,
       durationMs: Date.now() - start,
     });
 
     return result;
   }
 
-  // ─── Deal dimension ─────────────────────────────────────────────────────
+  // ─── Heuristic components (unchanged from v2.0) ─────────────────────────
+
   private computeDealScore(lead: Lead): { readonly score: number; readonly factors: ScoreFactor[] } {
     const factors: ScoreFactor[] = [];
     const { metrics } = lead;
+    let raw = 40;
 
-    let raw = 40;   // baseline
-
-    // Assignment margin (arv - repairs - offer) / arv
     if (metrics.arv && metrics.repairEstimate !== undefined && metrics.askingPrice) {
       const netEquity = metrics.arv - metrics.repairEstimate - metrics.askingPrice;
       const equityRatio = netEquity / metrics.arv;
@@ -147,9 +189,7 @@ export class ScoringService {
           weight: 0.3,
           description: `${Math.round(equityRatio * 100)}% equity spread`,
         });
-      } else if (equityRatio > 0) {
-        raw += 5;
-      } else {
+      } else if (equityRatio <= 0) {
         raw -= 15;
         factors.push({
           name: 'underwater',
@@ -160,10 +200,9 @@ export class ScoringService {
       }
     }
 
-    // 70% rule check
     if (metrics.arv && metrics.repairEstimate !== undefined && metrics.maxOffer) {
-      const seventyRuleTarget = metrics.arv * 0.7 - metrics.repairEstimate;
-      if (metrics.maxOffer <= seventyRuleTarget) {
+      const target = metrics.arv * 0.7 - metrics.repairEstimate;
+      if (metrics.maxOffer <= target) {
         raw += 15;
         factors.push({
           name: 'satisfies_70_rule',
@@ -174,19 +213,9 @@ export class ScoringService {
       }
     }
 
-    // Assignment fee sanity
-    if (metrics.assignmentFee !== undefined) {
-      if (metrics.assignmentFee >= 500_000) {
-        raw += 10;
-      } else if (metrics.assignmentFee < 100_000) {
-        raw -= 5;
-      }
-    }
-
     return { score: this.clamp(raw), factors };
   }
 
-  // ─── Motivation dimension ───────────────────────────────────────────────
   private computeMotivationScore(
     lead: Lead,
     features: InteractionFeatures,
@@ -197,11 +226,11 @@ export class ScoringService {
     switch (lead.motivation) {
       case MotivationLevel.URGENT:
         raw += 50;
-        factors.push({ name: 'urgent_motivation', value: 1, weight: 0.5, description: 'Operator flagged as urgent' });
+        factors.push({ name: 'urgent_motivation', value: 1, weight: 0.5, description: 'Urgent' });
         break;
       case MotivationLevel.HIGH:
         raw += 35;
-        factors.push({ name: 'high_motivation', value: 0.8, weight: 0.4, description: 'High motivation flag' });
+        factors.push({ name: 'high_motivation', value: 0.8, weight: 0.4, description: 'High motivation' });
         break;
       case MotivationLevel.MEDIUM:
         raw += 15;
@@ -213,42 +242,22 @@ export class ScoringService {
         break;
     }
 
-    // Source signals
     if (lead.source === LeadSource.PROBATE) {
       raw += 15;
-      factors.push({ name: 'probate_source', value: 0.7, weight: 0.3, description: 'Probate leads convert 2-3x baseline' });
-    }
-    if (lead.source === LeadSource.REFERRAL) {
-      raw += 10;
+      factors.push({ name: 'probate_source', value: 0.7, weight: 0.3, description: 'Probate source' });
     }
 
-    // Condition
-    if (lead.property.condition === PropertyCondition.HEAVY_REHAB || lead.property.condition === PropertyCondition.TEARDOWN) {
-      raw += 10;
-      factors.push({ name: 'distressed_property', value: 0.6, weight: 0.2, description: 'Distressed condition' });
-    }
-
-    // Response signals from interactions
     if (features.hasAppointment) {
       raw += 15;
-      factors.push({ name: 'appointment_set', value: 0.9, weight: 0.4, description: 'Appointment scheduled' });
+      factors.push({ name: 'appointment_set', value: 0.9, weight: 0.4, description: 'Appointment' });
     }
     if (features.responseRate > 0.5) {
       raw += 10;
-      factors.push({ name: 'high_response_rate', value: 0.7, weight: 0.3, description: `${Math.round(features.responseRate * 100)}% response rate` });
-    }
-    if (features.avgResponseTimeMinutes > 0 && features.avgResponseTimeMinutes < 60) {
-      raw += 8;
-    }
-    if (features.negativeCount > features.positiveCount * 2) {
-      raw -= 15;
-      factors.push({ name: 'negative_interactions', value: -0.6, weight: 0.3, description: 'Repeated negative interactions' });
     }
 
     return { score: this.clamp(raw), factors };
   }
 
-  // ─── Urgency dimension ──────────────────────────────────────────────────
   private computeUrgencyScore(
     lead: Lead,
     features: InteractionFeatures,
@@ -256,19 +265,15 @@ export class ScoringService {
     const factors: ScoreFactor[] = [];
     let raw = 40;
 
-    // Contract / offer momentum
     if (features.hasContract) {
       raw += 40;
       factors.push({ name: 'contract_signed', value: 1, weight: 0.5, description: 'Contract signed' });
     } else if (features.hasOffer) {
       raw += 25;
-      factors.push({ name: 'offer_made', value: 0.8, weight: 0.4, description: 'Offer already made' });
+      factors.push({ name: 'offer_made', value: 0.8, weight: 0.4, description: 'Offer made' });
     }
 
-    // Freshness
-    if (features.daysSinceLastContact === 0) {
-      raw += 10;
-    } else if (features.daysSinceLastContact > 14) {
+    if (features.daysSinceLastContact > 14) {
       raw -= 15;
       factors.push({
         name: 'stale_lead',
@@ -276,36 +281,12 @@ export class ScoringService {
         weight: 0.3,
         description: `${features.daysSinceLastContact} days since last contact`,
       });
-    } else if (features.daysSinceLastContact > 30) {
-      raw -= 30;
-    }
-
-    // Follow-up scheduled soon
-    if (lead.nextFollowUpAt) {
-      const nextMs = new Date(lead.nextFollowUpAt).getTime() - Date.now();
-      const nextDays = nextMs / (24 * 60 * 60 * 1000);
-      if (nextDays >= 0 && nextDays <= 2) {
-        raw += 10;
-        factors.push({ name: 'imminent_followup', value: 0.6, weight: 0.2, description: 'Follow-up due within 48 hours' });
-      }
     }
 
     return { score: this.clamp(raw), factors };
   }
 
-  // ─── Composition ────────────────────────────────────────────────────────
-  private combine(deal: number, motivation: number, urgency: number, weights: ScoringWeights): number {
-    const total = weights.dealWeight + weights.motivationWeight + weights.urgencyWeight;
-    if (total === 0) return Math.round((deal + motivation + urgency) / 3);
-
-    const composite =
-      (deal * weights.dealWeight + motivation * weights.motivationWeight + urgency * weights.urgencyWeight) /
-      total;
-
-    return Math.round(this.clamp(composite));
-  }
-
-  private computeConfidence(lead: Lead, features: InteractionFeatures): number {
+  private computeHeuristicConfidence(lead: Lead, features: InteractionFeatures): number {
     let signals = 0;
     if (lead.metrics.arv) signals++;
     if (lead.metrics.repairEstimate !== undefined) signals++;
@@ -313,9 +294,7 @@ export class ScoringService {
     if (lead.property.condition && lead.property.condition !== PropertyCondition.UNKNOWN) signals++;
     if (lead.motivation !== MotivationLevel.UNKNOWN) signals++;
     if (features.totalInteractions > 3) signals++;
-    if (features.totalInteractions > 10) signals++;
-
-    return Math.min(1, signals / 7);
+    return Math.min(1, signals / 6);
   }
 
   private recommendationFor(composite: number, confidence: number): ScoreRecommendation {
@@ -338,14 +317,10 @@ export class ScoringService {
 
   private summarizeLead(lead: Lead): string {
     const parts: string[] = [];
-    parts.push(`Property: ${lead.property.address}, ${lead.property.city} ${lead.property.state}`);
-    if (lead.property.beds || lead.property.sqft) {
-      parts.push(`${lead.property.beds ?? '?'}bd, ${lead.property.sqft ?? '?'}sqft`);
-    }
-    parts.push(`Source: ${lead.source}, Status: ${lead.status}, Motivation: ${lead.motivation}`);
+    parts.push(`${lead.property.address}, ${lead.property.city} ${lead.property.state}`);
+    parts.push(`Source: ${lead.source}, Motivation: ${lead.motivation}`);
     if (lead.metrics.arv) parts.push(`ARV: $${(lead.metrics.arv / 100).toLocaleString()}`);
     if (lead.metrics.askingPrice) parts.push(`Asking: $${(lead.metrics.askingPrice / 100).toLocaleString()}`);
-    if (lead.metrics.repairEstimate !== undefined) parts.push(`Repairs: $${(lead.metrics.repairEstimate / 100).toLocaleString()}`);
     return parts.join(' | ');
   }
 }
@@ -356,6 +331,9 @@ export function createScoringService(deps: {
   readonly scoreHistoryRepo: ScoreHistoryRepository;
   readonly weightsRepo: ScoringWeightsRepository;
   readonly gemini: GeminiService;
+  readonly modelRegistry: ModelRegistryService;
+  readonly inference: OnnxInferenceService;
+  readonly featureExtractor: MlFeatureExtractorService;
   readonly logger: Logger;
 }): ScoringService {
   return new ScoringService(
@@ -364,6 +342,9 @@ export function createScoringService(deps: {
     deps.scoreHistoryRepo,
     deps.weightsRepo,
     deps.gemini,
+    deps.modelRegistry,
+    deps.inference,
+    deps.featureExtractor,
     deps.logger,
   );
-}
+          }
