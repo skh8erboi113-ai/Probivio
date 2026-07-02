@@ -11,6 +11,10 @@ import {
 } from '@listinglogic/db';
 
 import { getLogger } from './config/logger.js';
+import {
+  createEventPublisherService,
+  EventPublisherService,
+} from './realtime/event-publisher.service.js';
 import { AutomationService, createAutomationService } from './services/automation.service.js';
 import { BuyerMatchingService, createBuyerMatchingService } from './services/buyer-matching.service.js';
 import { createGeminiService, GeminiService } from './services/gemini.service.js';
@@ -35,6 +39,7 @@ import { createTwilioService, TwilioService } from './services/twilio.service.js
 
 export interface AppContainer {
   readonly logger: Logger;
+
   readonly leadRepo: LeadRepository;
   readonly buyerRepo: BuyerRepository;
   readonly probateRepo: ProbateRepository;
@@ -52,10 +57,11 @@ export interface AppContainer {
   readonly taskQueue: TaskQueueService;
   readonly opsAlerts: OpsAlertsService;
 
-  // ML
   readonly modelRegistry: ModelRegistryService;
   readonly onnxInference: OnnxInferenceService;
   readonly featureExtractor: MlFeatureExtractorService;
+
+  readonly eventPublisher: EventPublisherService;
 
   readonly scoringService: ScoringService;
   readonly retrainingService: RetrainingService;
@@ -88,6 +94,8 @@ export function buildContainer(): AppContainer {
   const onnxInference = createOnnxInferenceService(logger);
   const featureExtractor = createMlFeatureExtractorService();
 
+  const eventPublisher = createEventPublisherService(logger);
+
   const scoringService = createScoringService({
     leadRepo,
     interactionRepo,
@@ -97,6 +105,7 @@ export function buildContainer(): AppContainer {
     modelRegistry,
     inference: onnxInference,
     featureExtractor,
+    eventPublisher,
     logger,
   });
 
@@ -117,6 +126,7 @@ export function buildContainer(): AppContainer {
     interactionRepo,
     twilio,
     sendgrid,
+    eventPublisher,
     logger,
   });
 
@@ -140,6 +150,7 @@ export function buildContainer(): AppContainer {
     modelRegistry,
     onnxInference,
     featureExtractor,
+    eventPublisher,
     scoringService,
     retrainingService,
     buyerMatchingService,
