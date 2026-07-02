@@ -1,0 +1,53 @@
+{
+  "name": "@listinglogic/types",
+  "version": "2.0.0",
+  "private": true,
+  "description": "Shared TypeScript domain models for ListingLogic monorepo",
+  "type": "module",
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
+  "exports": {
+    ".": {
+      "types": "./src/index.ts",
+      "import": "./src/index.ts",
+      "default": "./src/index.ts"
+    },
+    "./lead": {
+      "types": "./src/lead.ts",
+      "import": "./src/lead.ts"
+    },
+    "./buyer": {
+      "types": "./src/buyer.ts",
+      "import": "./src/buyer.ts"
+    },
+    "./probate": {
+      "types": "./src/probate.ts",
+      "import": "./src/probate.ts"
+    },
+    "./automation": {
+      "types": "./src/automation.ts",
+      "import": "./src/automation.ts"
+    },
+    "./interaction": {
+      "types": "./src/interaction.ts",
+      "import": "./src/interaction.ts"
+    },
+    "./scoring": {
+      "types": "./src/scoring.ts",
+      "import": "./src/scoring.ts"
+    },
+    "./api": {
+      "types": "./src/api.ts",
+      "import": "./src/api.ts"
+    }
+  },
+  "scripts": {
+    "lint": "eslint src --ext .ts",
+    "lint:fix": "eslint src --ext .ts --fix",
+    "type-check": "tsc --noEmit",
+    "clean": "rm -rf dist .turbo *.tsbuildinfo"
+  },
+  "devDependencies": {
+    "typescript": "^5.3.3"
+  }
+}
