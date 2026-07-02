@@ -14,16 +14,15 @@ import { getLogger } from './config/logger.js';
 import { AutomationService, createAutomationService } from './services/automation.service.js';
 import { BuyerMatchingService, createBuyerMatchingService } from './services/buyer-matching.service.js';
 import { createGeminiService, GeminiService } from './services/gemini.service.js';
+import { createOpsAlertsService, OpsAlertsService } from './services/ops-alerts.service.js';
+import { createPdfParserService, PdfParserService } from './services/pdf-parser.service.js';
 import { createProbateService, ProbateService } from './services/probate.service.js';
 import { createRetrainingService, RetrainingService } from './services/retraining.service.js';
 import { createScoringService, ScoringService } from './services/scoring.service.js';
 import { createSendGridService, SendGridService } from './services/sendgrid.service.js';
+import { createSkipTraceService, SkipTraceService } from './services/skip-trace.service.js';
+import { createTaskQueueService, TaskQueueService } from './services/task-queue.service.js';
 import { createTwilioService, TwilioService } from './services/twilio.service.js';
-
-/**
- * Dependency container.
- * Composed once at startup — no runtime service location, no globals.
- */
 
 export interface AppContainer {
   readonly logger: Logger;
@@ -38,10 +37,16 @@ export interface AppContainer {
   readonly weightsRepo: ScoringWeightsRepository;
   readonly idempotencyRepo: IdempotencyRepository;
 
-  // Services
+  // External clients
   readonly gemini: GeminiService;
   readonly twilio: TwilioService;
   readonly sendgrid: SendGridService;
+  readonly pdfParser: PdfParserService;
+  readonly skipTrace: SkipTraceService;
+  readonly taskQueue: TaskQueueService;
+  readonly opsAlerts: OpsAlertsService;
+
+  // Domain services
   readonly scoringService: ScoringService;
   readonly retrainingService: RetrainingService;
   readonly buyerMatchingService: BuyerMatchingService;
@@ -52,7 +57,6 @@ export interface AppContainer {
 export function buildContainer(): AppContainer {
   const logger = getLogger();
 
-  // Repositories
   const leadRepo = new LeadRepository(logger);
   const buyerRepo = new BuyerRepository(logger);
   const probateRepo = new ProbateRepository(logger);
@@ -62,58 +66,34 @@ export function buildContainer(): AppContainer {
   const weightsRepo = new ScoringWeightsRepository(logger);
   const idempotencyRepo = new IdempotencyRepository(logger);
 
-  // External-service clients
   const gemini = createGeminiService(logger);
   const twilio = createTwilioService(logger);
   const sendgrid = createSendGridService(logger);
+  const pdfParser = createPdfParserService(logger);
+  const skipTrace = createSkipTraceService(logger);
+  const taskQueue = createTaskQueueService(logger);
+  const opsAlerts = createOpsAlertsService(logger);
 
-  // Domain services
   const scoringService = createScoringService({
-    leadRepo,
-    interactionRepo,
-    scoreHistoryRepo,
-    weightsRepo,
-    gemini,
-    logger,
+    leadRepo, interactionRepo, scoreHistoryRepo, weightsRepo, gemini, logger,
   });
 
   const retrainingService = createRetrainingService({
-    leadRepo,
-    interactionRepo,
-    scoreHistoryRepo,
-    weightsRepo,
-    logger,
+    leadRepo, interactionRepo, scoreHistoryRepo, weightsRepo, logger,
   });
 
   const buyerMatchingService = createBuyerMatchingService({ leadRepo, buyerRepo, logger });
   const probateService = createProbateService({ probateRepo, gemini, logger });
 
   const automationService = createAutomationService({
-    automationRepo,
-    leadRepo,
-    interactionRepo,
-    twilio,
-    sendgrid,
-    logger,
+    automationRepo, leadRepo, interactionRepo, twilio, sendgrid, logger,
   });
 
   return {
     logger,
-    leadRepo,
-    buyerRepo,
-    probateRepo,
-    automationRepo,
-    interactionRepo,
-    scoreHistoryRepo,
-    weightsRepo,
-    idempotencyRepo,
-    gemini,
-    twilio,
-    sendgrid,
-    scoringService,
-    retrainingService,
-    buyerMatchingService,
-    probateService,
-    automationService,
+    leadRepo, buyerRepo, probateRepo, automationRepo,
+    interactionRepo, scoreHistoryRepo, weightsRepo, idempotencyRepo,
+    gemini, twilio, sendgrid, pdfParser, skipTrace, taskQueue, opsAlerts,
+    scoringService, retrainingService, buyerMatchingService, probateService, automationService,
   };
-}
+  }
