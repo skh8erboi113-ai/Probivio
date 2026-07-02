@@ -7,13 +7,13 @@ import type {
 } from '@listinglogic/db';
 import type {
   IsoTimestamp,
+  InteractionFeatures,
   Lead,
   LeadId,
   OperatorId,
   ScoreFactor,
   ScoreHistory,
   ScoreResult,
-  InteractionFeatures,
 } from '@listinglogic/types';
 import {
   LeadSource,
@@ -22,21 +22,14 @@ import {
   ScoreRecommendation,
 } from '@listinglogic/types';
 
+import type { EventPublisherService } from '../realtime/event-publisher.service.js';
+
 import type { GeminiService } from './gemini.service.js';
 import type { MlFeatureExtractorService } from './ml-feature-extractor.service.js';
 import type { ModelRegistryService } from './model-registry.service.js';
 import type { OnnxInferenceService } from './onnx-inference.service.js';
 
 const HEURISTIC_MODEL_VERSION = '2.0.0-heuristic-fallback';
-
-/**
- * Two-tier scoring:
- *   1. If operator has a trained ONNX model → use ML inference (primary path)
- *   2. If no model, insufficient data, or ML fails → fall back to heuristic
- *
- * The heuristic is the SAME algorithm as before — kept intact so cold-start
- * operators still get sensible scores while their interaction history accumulates.
- */
 
 export class ScoringService {
   private readonly logger: Logger;
@@ -50,6 +43,7 @@ export class ScoringService {
     private readonly modelRegistry: ModelRegistryService,
     private readonly inference: OnnxInferenceService,
     private readonly featureExtractor: MlFeatureExtractorService,
+    private readonly eventPublisher: EventPublisherService,
     logger: Logger,
   ) {
     this.logger = logger.child({ service: 'scoring' });
@@ -65,12 +59,10 @@ export class ScoringService {
     const lead = await this.leadRepo.findByIdOrThrow(operatorId, leadId);
     const interactionFeatures = await this.interactionRepo.computeFeatures(operatorId, leadId);
 
-    // Always compute heuristic components — used for interpretability + fallback
     const dealScore = this.computeDealScore(lead);
     const motivationScore = this.computeMotivationScore(lead, interactionFeatures);
     const urgencyScore = this.computeUrgencyScore(lead, interactionFeatures);
 
-    // Try ML path
     let composite: number;
     let confidence: number;
     let modelVersion: string;
@@ -94,13 +86,6 @@ export class ScoringService {
         composite = Math.round(mlProbability * 100);
         confidence = Math.min(0.99, 0.5 + model.metadata.auc * 0.5);
         modelVersion = model.metadata.version;
-
-        this.logger.debug('ML scoring path', {
-          leadId,
-          probability: mlProbability,
-          composite,
-          modelVersion,
-        });
       } catch (err) {
         this.logger.warn('ML inference failed, falling back to heuristic', {
           leadId,
@@ -111,7 +96,6 @@ export class ScoringService {
         modelVersion = HEURISTIC_MODEL_VERSION;
       }
     } else {
-      // Heuristic path — no ML model available
       composite = Math.round((dealScore.score + motivationScore.score + urgencyScore.score) / 3);
       confidence = this.computeHeuristicConfidence(lead, interactionFeatures);
       modelVersion = HEURISTIC_MODEL_VERSION;
@@ -150,6 +134,15 @@ export class ScoringService {
       this.scoreHistoryRepo.record(operatorId, leadId, result, triggeredBy, previousComposite),
     ]);
 
+    // Real-time broadcast
+    this.eventPublisher.publish('lead.scored', operatorId, {
+      leadId,
+      composite,
+      confidence,
+      recommendation: result.recommendation,
+      modelVersion,
+    });
+
     this.logger.info('Lead scored', {
       leadId,
       composite,
@@ -161,8 +154,6 @@ export class ScoringService {
 
     return result;
   }
-
-  // ─── Heuristic components (unchanged from v2.0) ─────────────────────────
 
   private computeDealScore(lead: Lead): { readonly score: number; readonly factors: ScoreFactor[] } {
     const factors: ScoreFactor[] = [];
@@ -334,6 +325,7 @@ export function createScoringService(deps: {
   readonly modelRegistry: ModelRegistryService;
   readonly inference: OnnxInferenceService;
   readonly featureExtractor: MlFeatureExtractorService;
+  readonly eventPublisher: EventPublisherService;
   readonly logger: Logger;
 }): ScoringService {
   return new ScoringService(
@@ -345,6 +337,7 @@ export function createScoringService(deps: {
     deps.modelRegistry,
     deps.inference,
     deps.featureExtractor,
+    deps.eventPublisher,
     deps.logger,
   );
-          }
+}
