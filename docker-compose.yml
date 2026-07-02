@@ -1,0 +1,53 @@
+version: '3.9'
+
+services:
+  redis:
+    image: redis:7-alpine
+    container_name: listinglogic-redis
+    restart: unless-stopped
+    ports:
+      - '6379:6379'
+    volumes:
+      - redis-data:/data
+    command: >
+      redis-server
+      --appendonly yes
+      --maxmemory 256mb
+      --maxmemory-policy allkeys-lru
+    healthcheck:
+      test: ['CMD', 'redis-cli', 'ping']
+      interval: 10s
+      timeout: 3s
+      retries: 5
+    networks:
+      - listinglogic
+
+  api:
+    build:
+      context: .
+      dockerfile: apps/streamline/Dockerfile
+      target: dev
+    container_name: listinglogic-api
+    restart: unless-stopped
+    ports:
+      - '8080:8080'
+    env_file:
+      - .env
+    environment:
+      REDIS_URL: redis://redis:6379
+      NODE_ENV: development
+    volumes:
+      - ./apps/streamline/src:/app/apps/streamline/src
+      - ./packages:/app/packages
+    depends_on:
+      redis:
+        condition: service_healthy
+    networks:
+      - listinglogic
+
+volumes:
+  redis-data:
+
+networks:
+  listinglogic:
+    driver: bridge
