@@ -1,0 +1,65 @@
+name: Production Incident
+description: Report a production incident
+labels: ['incident', 'p1']
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Use this template ONLY for active production incidents.
+        For bugs, use the bug report template.
+
+  - type: dropdown
+    id: severity
+    attributes:
+      label: Severity
+      options:
+        - P0 - Data loss / security breach
+        - P1 - Service down / severe degradation
+        - P2 - Feature broken / partial degradation
+        - P3 - Minor issue
+    validations:
+      required: true
+
+  - type: input
+    id: started_at
+    attributes:
+      label: Started at (UTC)
+      placeholder: '2026-07-01 14:32:00 UTC'
+    validations:
+      required: true
+
+  - type: textarea
+    id: impact
+    attributes:
+      label: User impact
+      description: What are users experiencing?
+      placeholder: |
+        - Number of affected users:
+        - Which features affected:
+        - Data loss?
+    validations:
+      required: true
+
+  - type: textarea
+    id: timeline
+    attributes:
+      label: Timeline
+      description: What has happened so far?
+      value: |
+        - Detection:
+        - Investigation started:
+        - Initial hypothesis:
+        - Actions taken:
+
+  - type: textarea
+    id: logs
+    attributes:
+      label: Relevant logs / links
+      description: Sentry issues, Cloud Logging queries, Grafana dashboards
+      render: markdown
+
+  - type: textarea
+    id: runbook
+    attributes:
+      label: Runbook reference
+      description: Link to relevant section of OPERATIONAL_RUNBOOK.md
