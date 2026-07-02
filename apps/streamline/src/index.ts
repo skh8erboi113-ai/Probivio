@@ -47,6 +47,7 @@ async function main(): Promise<void> {
       router: createLeadRouter({
         leadRepo: container.leadRepo,
         scoringService: container.scoringService,
+        eventPublisher: container.eventPublisher,
       }),
     },
     {
@@ -54,6 +55,7 @@ async function main(): Promise<void> {
       router: createBuyerRouter({
         buyerRepo: container.buyerRepo,
         buyerMatching: container.buyerMatchingService,
+        eventPublisher: container.eventPublisher,
       }),
     },
     {
@@ -62,6 +64,7 @@ async function main(): Promise<void> {
         interactionRepo: container.interactionRepo,
         scoringService: container.scoringService,
         automationService: container.automationService,
+        eventPublisher: container.eventPublisher,
       }),
     },
     {
@@ -101,11 +104,9 @@ async function main(): Promise<void> {
     logger.info(`Streamline API listening on :${config.port}`);
   });
 
-  // Attach WebSocket server
   const wss = createRealtimeWebSocketServer(logger);
   wss.attach(server);
 
-  // ─── Graceful shutdown ─────────────────────────────────────────────────
   const shutdown = async (signal: string): Promise<void> => {
     logger.info('Shutdown signal received', { signal });
 
