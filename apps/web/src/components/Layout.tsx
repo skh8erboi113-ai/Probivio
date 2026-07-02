@@ -3,6 +3,7 @@ import { NavLink, Outlet } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { fonts, palette, spacing } from '../theme';
 
+import { RealtimeIndicator } from './RealtimeIndicator';
 import { Button } from './ui/Button';
 
 const navItems = [
@@ -56,10 +57,12 @@ export function Layout() {
               ListingLogic
             </div>
             <div style={{ fontSize: 10, color: palette.textMuted, fontFamily: fonts.mono }}>
-              v2.0
+              v2.1
             </div>
           </div>
         </div>
+
+        <RealtimeIndicator />
 
         <nav style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
           {navItems.map((item) => (
