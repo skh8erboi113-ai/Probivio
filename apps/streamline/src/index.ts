@@ -11,20 +11,12 @@ import { createBuyerRouter } from './routes/buyer.routes.js';
 import { createHealthRouter } from './routes/health.routes.js';
 import { createInteractionRouter } from './routes/interaction.routes.js';
 import { createLeadRouter } from './routes/lead.routes.js';
+import { createOpenApiRouter } from './routes/openapi.routes.js';
 import { createProbateRouter } from './routes/probate.routes.js';
 import { createRetrainingRouter } from './routes/retraining.routes.js';
+import { createSchedulerRouter } from './routes/scheduler.routes.js';
+import { createTaskCallbackRouter } from './routes/task-callback.routes.js';
 
-/**
- * Application entry point.
- *
- * Sequence:
- *   1. Load & validate config (fail fast)
- *   2. Initialize Firebase Admin
- *   3. Build dependency container
- *   4. Wire routes
- *   5. Start HTTP listener
- *   6. Register graceful shutdown handlers
- */
 async function main(): Promise<void> {
   const config = loadConfig();
   const logger = getLogger();
@@ -35,7 +27,6 @@ async function main(): Promise<void> {
     port: config.port,
   });
 
-  // ─── Firebase Admin ────────────────────────────────────────────────────
   initializeFirebase(
     {
       projectId: config.firebase.projectId,
@@ -45,45 +36,59 @@ async function main(): Promise<void> {
     logger,
   );
 
-  // ─── Container ─────────────────────────────────────────────────────────
   const container = buildContainer();
 
-  // ─── Routers ───────────────────────────────────────────────────────────
   const routers: { readonly path: string; readonly router: Router }[] = [
     { path: '/', router: createHealthRouter({ geminiEnabled: () => container.gemini.isEnabled() }) },
+    { path: '/', router: createOpenApiRouter() },
+
     { path: '/api/leads', router: createLeadRouter({
       leadRepo: container.leadRepo,
       scoringService: container.scoringService,
     })},
+
     { path: '/api/buyers', router: createBuyerRouter({
       buyerRepo: container.buyerRepo,
       buyerMatching: container.buyerMatchingService,
     })},
+
     { path: '/api/interactions', router: createInteractionRouter({
       interactionRepo: container.interactionRepo,
       scoringService: container.scoringService,
       automationService: container.automationService,
     })},
+
     { path: '/api/probate', router: createProbateRouter({
       probateRepo: container.probateRepo,
       probateService: container.probateService,
     })},
+
     { path: '/api/automations', router: createAutomationRouter({
       automationRepo: container.automationRepo,
     })},
+
     { path: '/api/retraining', router: createRetrainingRouter({
       retrainingService: container.retrainingService,
     })},
+
+    { path: '/scheduler', router: createSchedulerRouter({
+      retrainingService: container.retrainingService,
+      opsAlerts: container.opsAlerts,
+      logger,
+    })},
+
+    { path: '/tasks', router: createTaskCallbackRouter({
+      automationService: container.automationService,
+      logger,
+    })},
   ];
 
-  // ─── App ───────────────────────────────────────────────────────────────
   const app = createApp({ routers });
 
   const server = app.listen(config.port, () => {
     logger.info(`Streamline API listening on :${config.port}`);
   });
 
-  // ─── Graceful shutdown ─────────────────────────────────────────────────
   const shutdown = async (signal: string): Promise<void> => {
     logger.info('Shutdown signal received', { signal });
 
