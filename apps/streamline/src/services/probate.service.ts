@@ -141,4 +141,4 @@ export function createProbateService(deps: {
   readonly logger: Logger;
 }): ProbateService {
   return new ProbateService(deps.probateRepo, deps.gemini, deps.pdfParser, deps.logger);
-}
+      }
