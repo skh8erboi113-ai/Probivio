@@ -1,0 +1,64 @@
+name: Deploy to Cloud Run
+
+on:
+  push:
+    branches: [main]
+
+env:
+  PROJECT_ID: ${{ secrets.GCP_PROJECT_ID }}
+  SERVICE_NAME: streamline-api
+  REGION: us-central1
+
+jobs:
+  deploy:
+    name: Deploy Streamline API
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Auth to GCP
+        uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ secrets.WIF_PROVIDER }}
+          service_account: ${{ secrets.WIF_SERVICE_ACCOUNT }}
+
+      - name: Setup gcloud
+        uses: google-github-actions/setup-gcloud@v2
+
+      - name: Configure Docker for GCR
+        run: gcloud auth configure-docker --quiet
+
+      - name: Build & push image
+        run: |
+          docker build \
+            -f apps/streamline/Dockerfile \
+            -t gcr.io/$PROJECT_ID/$SERVICE_NAME:${{ github.sha }} \
+            -t gcr.io/$PROJECT_ID/$SERVICE_NAME:latest \
+            .
+          docker push gcr.io/$PROJECT_ID/$SERVICE_NAME:${{ github.sha }}
+          docker push gcr.io/$PROJECT_ID/$SERVICE_NAME:latest
+
+      - name: Deploy to Cloud Run
+        run: |
+          gcloud run deploy $SERVICE_NAME \
+            --image gcr.io/$PROJECT_ID/$SERVICE_NAME:${{ github.sha }} \
+            --region $REGION \
+            --platform managed \
+            --min-instances 1 \
+            --max-instances 10 \
+            --memory 1Gi \
+            --cpu 1 \
+            --port 8080 \
+            --timeout 60s \
+            --allow-unauthenticated \
+            --set-env-vars "NODE_ENV=production" \
+            --set-secrets "FIREBASE_PROJECT_ID=firebase-project-id:latest" \
+            --set-secrets "FIREBASE_CLIENT_EMAIL=firebase-client-email:latest" \
+            --set-secrets "FIREBASE_PRIVATE_KEY=firebase-private-key:latest" \
+            --set-secrets "GEMINI_API_KEY=gemini-api-key:latest" \
+            --set-secrets "JWT_SECRET=jwt-secret:latest" \
+            --set-secrets "SESSION_SECRET=session-secret:latest"
