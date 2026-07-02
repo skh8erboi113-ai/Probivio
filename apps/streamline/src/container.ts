@@ -14,6 +14,15 @@ import { getLogger } from './config/logger.js';
 import { AutomationService, createAutomationService } from './services/automation.service.js';
 import { BuyerMatchingService, createBuyerMatchingService } from './services/buyer-matching.service.js';
 import { createGeminiService, GeminiService } from './services/gemini.service.js';
+import {
+  createMlFeatureExtractorService,
+  MlFeatureExtractorService,
+} from './services/ml-feature-extractor.service.js';
+import {
+  createModelRegistryService,
+  ModelRegistryService,
+} from './services/model-registry.service.js';
+import { createOnnxInferenceService, OnnxInferenceService } from './services/onnx-inference.service.js';
 import { createOpsAlertsService, OpsAlertsService } from './services/ops-alerts.service.js';
 import { createPdfParserService, PdfParserService } from './services/pdf-parser.service.js';
 import { createProbateService, ProbateService } from './services/probate.service.js';
@@ -26,8 +35,6 @@ import { createTwilioService, TwilioService } from './services/twilio.service.js
 
 export interface AppContainer {
   readonly logger: Logger;
-
-  // Repositories
   readonly leadRepo: LeadRepository;
   readonly buyerRepo: BuyerRepository;
   readonly probateRepo: ProbateRepository;
@@ -37,7 +44,6 @@ export interface AppContainer {
   readonly weightsRepo: ScoringWeightsRepository;
   readonly idempotencyRepo: IdempotencyRepository;
 
-  // External clients
   readonly gemini: GeminiService;
   readonly twilio: TwilioService;
   readonly sendgrid: SendGridService;
@@ -46,7 +52,11 @@ export interface AppContainer {
   readonly taskQueue: TaskQueueService;
   readonly opsAlerts: OpsAlertsService;
 
-  // Domain services
+  // ML
+  readonly modelRegistry: ModelRegistryService;
+  readonly onnxInference: OnnxInferenceService;
+  readonly featureExtractor: MlFeatureExtractorService;
+
   readonly scoringService: ScoringService;
   readonly retrainingService: RetrainingService;
   readonly buyerMatchingService: BuyerMatchingService;
@@ -74,26 +84,66 @@ export function buildContainer(): AppContainer {
   const taskQueue = createTaskQueueService(logger);
   const opsAlerts = createOpsAlertsService(logger);
 
+  const modelRegistry = createModelRegistryService({ weightsRepo, logger });
+  const onnxInference = createOnnxInferenceService(logger);
+  const featureExtractor = createMlFeatureExtractorService();
+
   const scoringService = createScoringService({
-    leadRepo, interactionRepo, scoreHistoryRepo, weightsRepo, gemini, logger,
+    leadRepo,
+    interactionRepo,
+    scoreHistoryRepo,
+    weightsRepo,
+    gemini,
+    modelRegistry,
+    inference: onnxInference,
+    featureExtractor,
+    logger,
   });
 
   const retrainingService = createRetrainingService({
-    leadRepo, interactionRepo, scoreHistoryRepo, weightsRepo, logger,
+    leadRepo,
+    interactionRepo,
+    scoreHistoryRepo,
+    weightsRepo,
+    logger,
   });
 
   const buyerMatchingService = createBuyerMatchingService({ leadRepo, buyerRepo, logger });
-  const probateService = createProbateService({ probateRepo, gemini, logger });
+  const probateService = createProbateService({ probateRepo, gemini, pdfParser, logger });
 
   const automationService = createAutomationService({
-    automationRepo, leadRepo, interactionRepo, twilio, sendgrid, logger,
+    automationRepo,
+    leadRepo,
+    interactionRepo,
+    twilio,
+    sendgrid,
+    logger,
   });
 
   return {
     logger,
-    leadRepo, buyerRepo, probateRepo, automationRepo,
-    interactionRepo, scoreHistoryRepo, weightsRepo, idempotencyRepo,
-    gemini, twilio, sendgrid, pdfParser, skipTrace, taskQueue, opsAlerts,
-    scoringService, retrainingService, buyerMatchingService, probateService, automationService,
+    leadRepo,
+    buyerRepo,
+    probateRepo,
+    automationRepo,
+    interactionRepo,
+    scoreHistoryRepo,
+    weightsRepo,
+    idempotencyRepo,
+    gemini,
+    twilio,
+    sendgrid,
+    pdfParser,
+    skipTrace,
+    taskQueue,
+    opsAlerts,
+    modelRegistry,
+    onnxInference,
+    featureExtractor,
+    scoringService,
+    retrainingService,
+    buyerMatchingService,
+    probateService,
+    automationService,
   };
-  }
+}
