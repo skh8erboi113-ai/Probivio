@@ -4,6 +4,7 @@ import { Navigate, Route, BrowserRouter as Router, Routes } from 'react-router-d
 
 import { Layout } from './components/Layout';
 import { AuthProvider, useAuth } from './context/AuthContext';
+import { RealtimeProvider } from './context/RealtimeContext';
 import { ToastProvider } from './context/ToastContext';
 import { ApiClientError } from './lib/api-client';
 import { AutomationsPage } from './pages/AutomationsPage';
@@ -25,9 +26,7 @@ const queryClient = new QueryClient({
       refetchOnWindowFocus: false,
       staleTime: 30_000,
     },
-    mutations: {
-      retry: false,
-    },
+    mutations: { retry: false },
   },
 });
 
@@ -38,19 +37,21 @@ function ProtectedRoutes() {
   if (!user) return <Navigate to="/login" replace />;
 
   return (
-    <Routes>
-      <Route element={<Layout />}>
-        <Route index element={<DashboardPage />} />
-        <Route path="leads" element={<LeadsPage />} />
-        <Route path="leads/new" element={<LeadFormPage />} />
-        <Route path="leads/:id" element={<LeadDetailPage />} />
-        <Route path="leads/:id/edit" element={<LeadFormPage />} />
-        <Route path="buyers" element={<BuyersPage />} />
-        <Route path="probate" element={<ProbatePage />} />
-        <Route path="automations" element={<AutomationsPage />} />
-        <Route path="*" element={<Navigate to="/" replace />} />
-      </Route>
-    </Routes>
+    <RealtimeProvider>
+      <Routes>
+        <Route element={<Layout />}>
+          <Route index element={<DashboardPage />} />
+          <Route path="leads" element={<LeadsPage />} />
+          <Route path="leads/new" element={<LeadFormPage />} />
+          <Route path="leads/:id" element={<LeadDetailPage />} />
+          <Route path="leads/:id/edit" element={<LeadFormPage />} />
+          <Route path="buyers" element={<BuyersPage />} />
+          <Route path="probate" element={<ProbatePage />} />
+          <Route path="automations" element={<AutomationsPage />} />
+          <Route path="*" element={<Navigate to="/" replace />} />
+        </Route>
+      </Routes>
+    </RealtimeProvider>
   );
 }
 
