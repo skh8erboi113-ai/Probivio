@@ -1,8 +1,11 @@
 import { NavLink, Outlet } from 'react-router-dom';
 
-import { useAuth } from '@/context/AuthContext';
+import { useAuth } from '../context/AuthContext';
+import { fonts, palette, spacing } from '../theme';
 
-const NAV_ITEMS = [
+import { Button } from './ui/Button';
+
+const navItems = [
   { to: '/', label: 'Dashboard' },
   { to: '/leads', label: 'Leads' },
   { to: '/buyers', label: 'Buyers' },
@@ -10,35 +13,68 @@ const NAV_ITEMS = [
   { to: '/automations', label: 'Automations' },
 ] as const;
 
-export function Layout(): JSX.Element {
+export function Layout() {
   const { user, signOut } = useAuth();
 
   return (
-    <div style={{ display: 'flex', minHeight: '100vh', background: '#0a0b0f', color: '#e8e4d9' }}>
+    <div
+      style={{
+        display: 'grid',
+        gridTemplateColumns: '240px 1fr',
+        minHeight: '100vh',
+        background: palette.bg,
+        color: palette.text,
+        fontFamily: fonts.sans,
+      }}
+    >
       <aside
         style={{
-          width: 240,
-          background: '#111318',
-          borderRight: '1px solid #1e2535',
-          padding: 24,
+          background: palette.surface,
+          borderRight: `1px solid ${palette.border}`,
+          padding: spacing.lg,
+          display: 'flex',
+          flexDirection: 'column',
+          gap: spacing.xl,
         }}
       >
-        <div style={{ fontSize: 20, fontWeight: 700, marginBottom: 32 }}>ListingLogic</div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+          <div
+            style={{
+              width: 36,
+              height: 36,
+              borderRadius: 8,
+              background: `linear-gradient(135deg, ${palette.accent}, ${palette.accentDim})`,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+            }}
+          >
+            🏛️
+          </div>
+          <div>
+            <div style={{ fontFamily: fonts.display, fontWeight: 700, fontSize: 16 }}>
+              ListingLogic
+            </div>
+            <div style={{ fontSize: 10, color: palette.textMuted, fontFamily: fonts.mono }}>
+              v2.0
+            </div>
+          </div>
+        </div>
 
         <nav style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-          {NAV_ITEMS.map((item) => (
+          {navItems.map((item) => (
             <NavLink
               key={item.to}
               to={item.to}
               end={item.to === '/'}
               style={({ isActive }) => ({
-                padding: '10px 12px',
+                padding: '10px 14px',
                 borderRadius: 6,
-                color: isActive ? '#c9a84c' : '#7a8094',
-                background: isActive ? 'rgba(201,168,76,0.1)' : 'transparent',
+                fontSize: 13,
+                fontWeight: isActive ? 600 : 400,
+                color: isActive ? palette.accent : palette.textMuted,
+                background: isActive ? palette.accentGlow : 'transparent',
                 textDecoration: 'none',
-                fontSize: 14,
-                fontWeight: isActive ? 600 : 500,
               })}
             >
               {item.label}
@@ -46,34 +82,17 @@ export function Layout(): JSX.Element {
           ))}
         </nav>
 
-        <div style={{ position: 'absolute', bottom: 24, left: 24, right: 24 }}>
-          {user && (
-            <>
-              <div style={{ fontSize: 12, color: '#7a8094', marginBottom: 8 }}>
-                {user.email}
-              </div>
-              <button
-                type="button"
-                onClick={() => void signOut()}
-                style={{
-                  width: '100%',
-                  padding: '8px 12px',
-                  background: 'transparent',
-                  border: '1px solid #1e2535',
-                  color: '#e8e4d9',
-                  borderRadius: 6,
-                  cursor: 'pointer',
-                  fontSize: 13,
-                }}
-              >
-                Sign out
-              </button>
-            </>
-          )}
+        <div style={{ marginTop: 'auto', display: 'flex', flexDirection: 'column', gap: spacing.sm }}>
+          <div style={{ fontSize: 11, color: palette.textDim, fontFamily: fonts.mono }}>
+            {user?.email}
+          </div>
+          <Button variant="secondary" size="sm" onClick={() => signOut()}>
+            Sign out
+          </Button>
         </div>
       </aside>
 
-      <main style={{ flex: 1, padding: 32, overflow: 'auto' }}>
+      <main style={{ padding: spacing.xl, overflowY: 'auto' }}>
         <Outlet />
       </main>
     </div>
