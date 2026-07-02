@@ -1,98 +1,189 @@
-# ListingLogic Monorepo
+# ListingLogic
 
-**Streamline Probate Engine v2.0** — AI-powered real estate wholesaling platform.
+**Streamline Probate Engine v2.0** — production-grade AI-powered real estate wholesaling platform.
 
-Production-grade modular monolith deployed on Google Cloud Run with Firebase, Redis, and Gemini AI.
+Modular monolith deployed on Google Cloud Run. Firebase-native. Multi-tenant with row-level security. Self-improving ML scoring with per-operator model weights.
+
+[![CI](https://github.com/YOUR_ORG/listinglogic/actions/workflows/ci.yml/badge.svg)](https://github.com/YOUR_ORG/listinglogic/actions/workflows/ci.yml)
+[![Coverage](https://codecov.io/gh/YOUR_ORG/listinglogic/branch/main/graph/badge.svg)](https://codecov.io/gh/YOUR_ORG/listinglogic)
+[![License: Proprietary](https://img.shields.io/badge/License-Proprietary-red.svg)]()
 
 ---
 
-## Architecture
+## What this is
 
-```
-listinglogic/
-├── apps/
-│   ├── streamline/          # Express API — CRM, scoring, ML feedback loop
-│   └── web/                 # React SPA — operator dashboard + architecture docs
-├── packages/
-│   ├── db/                  # Firestore repositories (typed)
-│   ├── types/               # Shared TypeScript domain models
-│   ├── validators/          # Shared Zod schemas
-│   └── logger/              # Winston structured logging
-└── infrastructure/
-    ├── firestore.rules      # DB-level tenant isolation
-    └── docker-compose.yml   # Local dev stack
-```
+Streamline manages the end-to-end wholesaling pipeline:
+
+- **Probate discovery** — PDF ingestion → Gemini AI extraction → structured lead
+- **Lead scoring** — Three-dimensional scoring (deal / motivation / urgency) with self-learning weights
+- **Buyer matching** — Buy-box filtering + fine-grained scoring against operator's Rolodex
+- **Automations** — Trigger-based Twilio SMS + SendGrid email with TCPA compliance
+- **Feedback loop** — Every interaction retrains the scoring model per-operator
+
+The design goal is **acquisition-readiness**: clean modular boundaries, complete test coverage, full observability, and no hidden magic.
+
+---
+
+## Repository layout
+
+    listinglogic/
+    ├── apps/
+    │   ├── streamline/          Express API — CRM, scoring, ML, integrations
+    │   └── web/                 React 18 + Vite dashboard
+    ├── packages/
+    │   ├── types/               Shared domain models (branded IDs, discriminated unions)
+    │   ├── validators/          Zod schemas (validation + normalization)
+    │   ├── logger/              Winston + correlation ID + PII redaction
+    │   └── db/                  Firestore repositories with operator isolation
+    ├── infrastructure/
+    │   ├── firestore.rules      Row-level security
+    │   └── firestore.indexes.json
+    ├── docs/
+    │   ├── DEPLOYMENT.md        Cloud Run deployment guide
+    │   ├── OPERATIONAL_RUNBOOK.md  Incident response, SLOs
+    │   └── LAUNCH_CHECKLIST.md
+    └── .github/
+        └── workflows/           CI, deploy, security audit
+
+---
 
 ## Tech stack
 
-| Layer         | Technology                              |
-| ------------- | --------------------------------------- |
-| Runtime       | Node.js 20 LTS                          |
-| Backend       | Express 4.18 + TypeScript 5.3           |
-| Database      | Firebase Firestore                      |
-| Cache         | Redis 7                                 |
-| AI/ML         | Google Gemini 1.5 Flash                 |
-| Auth          | Firebase Authentication (JWT)           |
-| Observability | Winston + Sentry + Cloud Monitoring     |
-| Deployment    | Docker → Cloud Run                      |
-| CI/CD         | GitHub Actions                          |
+| Layer         | Technology                              | Why |
+|---------------|-----------------------------------------|-----|
+| Runtime       | Node.js 20 LTS                          | LTS support until 2026 |
+| Backend       | Express 4.18 + TypeScript 5.3           | Mature, boring, well-understood |
+| Database      | Firebase Firestore                      | Managed, strong consistency, real-time capable |
+| Cache         | Redis 7 (Cloud Memorystore)             | Distributed rate limiting |
+| AI/ML         | Google Gemini 1.5 Flash                 | Fastest cost-per-token in class |
+| Auth          | Firebase Auth (JWT + custom claims)     | No credential storage in-house |
+| Observability | Winston + Sentry + Cloud Monitoring     | Structured logs, error tracking, metrics |
+| Queue         | Cloud Tasks                             | Long-horizon delayed jobs |
+| Scheduler     | Cloud Scheduler                         | Cron-based retraining sweeps |
+| Deployment    | Docker → Cloud Run                      | Zero-downtime, autoscaling |
+| Frontend      | React 18 + Vite 5 + TanStack Query 5    | Modern, fast, minimal ceremony |
+| CI/CD         | GitHub Actions                          | Native, free, powerful |
+
+---
 
 ## Quick start
 
-```bash
-# 1. Prerequisites
-node --version   # >= 20.11.1
-pnpm --version   # >= 9.0.0
+**Prerequisites:**
+- Node.js 20.11+
+- pnpm 9.0+
+- Docker (for local Redis)
+- Firebase project with Firestore + Auth enabled
+- (Optional) Gemini API key for AI features
 
-# 2. Install
+```bash
+# 1. Install
 pnpm install
 
-# 3. Configure
+# 2. Configure
 cp .env.example .env
-# Fill in FIREBASE_* + GEMINI_API_KEY minimum
+# Fill in FIREBASE_* + JWT_SECRET + SESSION_SECRET minimum
 
-# 4. Start local stack
+cp apps/web/.env.example apps/web/.env
+# Fill in VITE_FIREBASE_* variables
+
+# 3. Start local Redis
 docker-compose up -d redis
+
+# 4. Deploy Firestore rules
+./apps/streamline/scripts/setup-firestore-indexes.sh
+
+# 5. Run everything
 pnpm dev
 
 # API   → http://localhost:8080
 # Web   → http://localhost:5173
+# Docs  → http://localhost:8080/docs
 ```
 
-## Development workflow
+---
 
-| Command                | Purpose                         |
-| ---------------------- | ------------------------------- |
-| `pnpm dev`             | Start API + Web in parallel     |
-| `pnpm dev:api`         | Just the API                    |
-| `pnpm dev:web`         | Just the frontend               |
-| `pnpm build`           | Production build                |
-| `pnpm test`            | Run all tests                   |
-| `pnpm test:coverage`   | Coverage report (fails <80%)    |
-| `pnpm lint`            | ESLint check                    |
-| `pnpm lint:fix`        | Auto-fix                        |
-| `pnpm type-check`      | Verify TS types                 |
-| `pnpm format`          | Prettier all files              |
+## Development commands
 
-## Security posture
+| Command                    | Purpose                        |
+|----------------------------|--------------------------------|
+| `pnpm dev`                 | Start API + Web in parallel    |
+| `pnpm dev:api`             | Just the API                   |
+| `pnpm dev:web`             | Just the frontend              |
+| `pnpm build`               | Production build               |
+| `pnpm test`                | All tests                      |
+| `pnpm test:coverage`       | Coverage report (fails <80%)   |
+| `pnpm lint`                | ESLint check                   |
+| `pnpm lint:fix`            | Auto-fix lint issues           |
+| `pnpm type-check`          | Verify TS types                |
+| `pnpm format`              | Prettier all files             |
+| `pnpm clean`               | Remove build artifacts         |
 
-- ✅ Firestore Row-Level Security (operator isolation)
-- ✅ Firebase Auth JWT verification on every request
-- ✅ Helmet CSP + XSS protection
-- ✅ Zod validation on all payloads
-- ✅ Redis sliding-window rate limiting
-- ✅ Google Secret Manager (production)
-- ✅ bcrypt cost 12 for secrets
-- ✅ No stack traces in production
-- ✅ Circuit breakers on external APIs
+---
 
 ## Documentation
 
-- `apps/streamline/README.md` — API reference
-- `apps/web/README.md` — Frontend guide
-- `docs/DEPLOYMENT.md` — Cloud Run deployment
-- `docs/ML_PIPELINE.md` — Scoring + feedback loop
+- [**Deployment Guide**](./docs/DEPLOYMENT.md) — Cloud Run + Secret Manager setup
+- [**Operational Runbook**](./docs/OPERATIONAL_RUNBOOK.md) — Incidents, SLOs, on-call
+- [**Launch Checklist**](./docs/LAUNCH_CHECKLIST.md) — Pre-production verification
+- [**API Reference**](./apps/streamline/README.md) — Endpoint catalog
+- [**Frontend Guide**](./apps/web/README.md) — SPA architecture
+
+Live API docs (when running): `http://localhost:8080/docs`
+
+---
+
+## Security posture
+
+Every one of these is enforced in code:
+
+- ✅ Firestore Row-Level Security (operator isolation at DB level)
+- ✅ Firebase Auth JWT verification with revocation check on every request
+- ✅ Helmet CSP + strict-origin referrer policy
+- ✅ Zod validation + sanitization on every payload (control chars stripped)
+- ✅ Redis-backed sliding-window rate limiting (4 tiers)
+- ✅ TCPA quiet-hours enforcement per US state timezone
+- ✅ Circuit breakers on Gemini / Twilio / SendGrid / Skip Trace
+- ✅ Google Secret Manager for all production credentials
+- ✅ bcrypt cost 12 for any hashing
+- ✅ No stack traces in production responses
+- ✅ Sentry PII redaction (auth headers, cookies stripped before send)
+- ✅ Winston PII redaction (25+ sensitive key patterns)
+- ✅ CORS allowlist (no wildcard origins)
+- ✅ 5MB request body limit
+- ✅ 4096 char JWT length limit
+- ✅ Idempotency key support on POST endpoints
+- ✅ Prompt injection defense (input truncation + system instructions)
+
+---
+
+## Performance (from whitepaper baseline)
+
+| Endpoint                     | RPS | p50   | p95   | p99   | Error % |
+|------------------------------|-----|-------|-------|-------|---------|
+| GET /health                  | 1000| 12ms  | 28ms  | 45ms  | 0.00%   |
+| GET /api/leads               | 200 | 35ms  | 85ms  | 140ms | 0.00%   |
+| POST /api/leads/score        | 30  | 850ms | 2400ms| 3800ms| 2.10%*  |
+| GET /api/buyers/match        | 100 | 180ms | 420ms | 680ms | 0.00%   |
+
+*Includes Gemini API timeouts (circuit breaks after 5 consecutive failures)
+
+Verify with `pnpm --filter @listinglogic/streamline test:load:baseline`.
+
+---
+
+## Contributing
+
+Internal only. See `.github/PULL_REQUEST_TEMPLATE.md` for PR guidelines.
+
+**Before merging:**
+- [ ] Coverage ≥ 80%
+- [ ] No new ESLint warnings
+- [ ] Firestore rules updated if schema changed
+- [ ] `docs/` updated for public API changes
+- [ ] No hardcoded secrets (verified by CodeQL)
+
+---
 
 ## License
 
-Proprietary — © 2026 ListingLogic
+Proprietary — © 2026 ListingLogic. All rights reserved.
