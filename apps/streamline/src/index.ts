@@ -6,6 +6,7 @@ import { loadConfig } from './config/config.js';
 import { getLogger } from './config/logger.js';
 import { buildContainer } from './container.js';
 import { shutdownRateLimit } from './middleware/rate-limit.js';
+import { createRealtimeWebSocketServer } from './realtime/websocket-server.js';
 import { createAutomationRouter } from './routes/automation.routes.js';
 import { createBuyerRouter } from './routes/buyer.routes.js';
 import { createHealthRouter } from './routes/health.routes.js';
@@ -22,7 +23,7 @@ async function main(): Promise<void> {
   const logger = getLogger();
 
   logger.info('Starting Streamline API', {
-    version: '2.0.0',
+    version: '2.1.0',
     env: config.env,
     port: config.port,
   });
@@ -41,54 +42,70 @@ async function main(): Promise<void> {
   const routers: { readonly path: string; readonly router: Router }[] = [
     { path: '/', router: createHealthRouter({ geminiEnabled: () => container.gemini.isEnabled() }) },
     { path: '/', router: createOpenApiRouter() },
-
-    { path: '/api/leads', router: createLeadRouter({
-      leadRepo: container.leadRepo,
-      scoringService: container.scoringService,
-    })},
-
-    { path: '/api/buyers', router: createBuyerRouter({
-      buyerRepo: container.buyerRepo,
-      buyerMatching: container.buyerMatchingService,
-    })},
-
-    { path: '/api/interactions', router: createInteractionRouter({
-      interactionRepo: container.interactionRepo,
-      scoringService: container.scoringService,
-      automationService: container.automationService,
-    })},
-
-    { path: '/api/probate', router: createProbateRouter({
-      probateRepo: container.probateRepo,
-      probateService: container.probateService,
-    })},
-
-    { path: '/api/automations', router: createAutomationRouter({
-      automationRepo: container.automationRepo,
-    })},
-
-    { path: '/api/retraining', router: createRetrainingRouter({
-      retrainingService: container.retrainingService,
-    })},
-
-    { path: '/scheduler', router: createSchedulerRouter({
-      retrainingService: container.retrainingService,
-      opsAlerts: container.opsAlerts,
-      logger,
-    })},
-
-    { path: '/tasks', router: createTaskCallbackRouter({
-      automationService: container.automationService,
-      logger,
-    })},
+    {
+      path: '/api/leads',
+      router: createLeadRouter({
+        leadRepo: container.leadRepo,
+        scoringService: container.scoringService,
+      }),
+    },
+    {
+      path: '/api/buyers',
+      router: createBuyerRouter({
+        buyerRepo: container.buyerRepo,
+        buyerMatching: container.buyerMatchingService,
+      }),
+    },
+    {
+      path: '/api/interactions',
+      router: createInteractionRouter({
+        interactionRepo: container.interactionRepo,
+        scoringService: container.scoringService,
+        automationService: container.automationService,
+      }),
+    },
+    {
+      path: '/api/probate',
+      router: createProbateRouter({
+        probateRepo: container.probateRepo,
+        probateService: container.probateService,
+      }),
+    },
+    {
+      path: '/api/automations',
+      router: createAutomationRouter({ automationRepo: container.automationRepo }),
+    },
+    {
+      path: '/api/retraining',
+      router: createRetrainingRouter({ retrainingService: container.retrainingService }),
+    },
+    {
+      path: '/scheduler',
+      router: createSchedulerRouter({
+        retrainingService: container.retrainingService,
+        opsAlerts: container.opsAlerts,
+        logger,
+      }),
+    },
+    {
+      path: '/tasks',
+      router: createTaskCallbackRouter({
+        automationService: container.automationService,
+        logger,
+      }),
+    },
   ];
 
   const app = createApp({ routers });
-
   const server = app.listen(config.port, () => {
     logger.info(`Streamline API listening on :${config.port}`);
   });
 
+  // Attach WebSocket server
+  const wss = createRealtimeWebSocketServer(logger);
+  wss.attach(server);
+
+  // ─── Graceful shutdown ─────────────────────────────────────────────────
   const shutdown = async (signal: string): Promise<void> => {
     logger.info('Shutdown signal received', { signal });
 
@@ -96,7 +113,11 @@ async function main(): Promise<void> {
       if (err) logger.error('HTTP server close error', { error: err });
 
       try {
-        await Promise.all([shutdownRateLimit(), shutdownFirebase(logger)]);
+        await Promise.all([
+          wss.shutdown(),
+          shutdownRateLimit(),
+          shutdownFirebase(logger),
+        ]);
       } catch (cleanupErr) {
         logger.error('Cleanup error during shutdown', { error: cleanupErr });
       }
