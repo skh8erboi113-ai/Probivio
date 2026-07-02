@@ -1,0 +1,97 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ─── Helper functions ─────────────────────────────────────
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isOperator(operatorId) {
+      return isSignedIn() && request.auth.uid == operatorId;
+    }
+
+    function ownsResource(resource) {
+      return isSignedIn() && resource.data.operatorId == request.auth.uid;
+    }
+
+    function willOwnResource() {
+      return isSignedIn() && request.resource.data.operatorId == request.auth.uid;
+    }
+
+    function isAdmin() {
+      return isSignedIn() && request.auth.token.admin == true;
+    }
+
+    function hasRequiredFields(fields) {
+      return request.resource.data.keys().hasAll(fields);
+    }
+
+    // ─── Operators (user profiles) ────────────────────────────
+    match /operators/{operatorId} {
+      allow read: if isOperator(operatorId) || isAdmin();
+      allow create: if isOperator(operatorId)
+                    && hasRequiredFields(['email', 'createdAt']);
+      allow update: if isOperator(operatorId);
+      allow delete: if isAdmin();
+    }
+
+    // ─── Leads ────────────────────────────────────────────────
+    match /leads/{leadId} {
+      allow read: if ownsResource(resource) || isAdmin();
+      allow create: if willOwnResource()
+                    && hasRequiredFields(['operatorId', 'propertyAddress', 'source', 'status', 'createdAt']);
+      allow update: if ownsResource(resource)
+                    && request.resource.data.operatorId == resource.data.operatorId;
+      allow delete: if ownsResource(resource) || isAdmin();
+    }
+
+    // ─── Buyers ───────────────────────────────────────────────
+    match /buyers/{buyerId} {
+      allow read: if ownsResource(resource) || isAdmin();
+      allow create: if willOwnResource()
+                    && hasRequiredFields(['operatorId', 'email', 'buyBox', 'createdAt']);
+      allow update: if ownsResource(resource);
+      allow delete: if ownsResource(resource) || isAdmin();
+    }
+
+    // ─── Probate cases ────────────────────────────────────────
+    match /probate_cases/{caseId} {
+      allow read: if ownsResource(resource) || isAdmin();
+      allow create: if willOwnResource();
+      allow update: if ownsResource(resource);
+      allow delete: if ownsResource(resource) || isAdmin();
+    }
+
+    // ─── Automations ──────────────────────────────────────────
+    match /automations/{automationId} {
+      allow read: if ownsResource(resource) || isAdmin();
+      allow create: if willOwnResource()
+                    && hasRequiredFields(['operatorId', 'name', 'trigger', 'actions']);
+      allow update: if ownsResource(resource);
+      allow delete: if ownsResource(resource) || isAdmin();
+    }
+
+    // ─── Interactions (ML feedback loop) ──────────────────────
+    match /interactions/{interactionId} {
+      allow read: if ownsResource(resource) || isAdmin();
+      allow create: if willOwnResource()
+                    && hasRequiredFields(['operatorId', 'leadId', 'type', 'createdAt']);
+      // Interactions are append-only — no updates or deletes
+      allow update, delete: if isAdmin();
+    }
+
+    // ─── Score history (audit trail) ──────────────────────────
+    match /score_history/{scoreId} {
+      allow read: if ownsResource(resource) || isAdmin();
+      // Only server writes score history
+      allow write: if false;
+    }
+
+    // ─── Deny everything else ─────────────────────────────────
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
