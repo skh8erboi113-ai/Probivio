@@ -44,7 +44,7 @@
     "rate-limit-redis": "^4.2.0",
     "twilio": "^4.22.0",
     "ws": "^8.16.0",
-    "zod": "^3.22.4"
+    "zod": "^4.4.3"
   },
   "devDependencies": {
     "@types/bcrypt": "^6.0.0",
