@@ -4,7 +4,7 @@
 # =============================================================================
 
 # ─── Stage 1: Base ────────────────────────────────────────────────────────────
-FROM node:20.11.1-alpine3.19 AS base
+FROM node:23.3.0-alpine3.19 AS base
 
 # Install security updates
 RUN apk update && apk upgrade --no-cache && \
