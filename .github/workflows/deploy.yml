@@ -1,8 +1,9 @@
 name: Deploy to Cloud Run
 
+# Only run this workflow when manually triggered from the Actions tab.
+# Once you've set up GCP secrets, change this back to trigger on push to main.
 on:
-  push:
-    branches: [main]
+  workflow_dispatch:
 
 env:
   PROJECT_ID: ${{ secrets.GCP_PROJECT_ID }}
@@ -18,16 +19,27 @@ jobs:
       contents: read
       id-token: write
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@v4
+
+      - name: Verify secrets exist
+        run: |
+          if [ -z "${{ secrets.GCP_PROJECT_ID }}" ]; then
+            echo "❌ GCP_PROJECT_ID secret not set"
+            exit 1
+          fi
+          if [ -z "${{ secrets.WIF_PROVIDER }}" ]; then
+            echo "❌ WIF_PROVIDER secret not set. See docs/DEPLOYMENT.md"
+            exit 1
+          fi
 
       - name: Auth to GCP
-        uses: google-github-actions/auth@v3
+        uses: google-github-actions/auth@v2
         with:
           workload_identity_provider: ${{ secrets.WIF_PROVIDER }}
           service_account: ${{ secrets.WIF_SERVICE_ACCOUNT }}
 
       - name: Setup gcloud
-        uses: google-github-actions/setup-gcloud@v3
+        uses: google-github-actions/setup-gcloud@v2
 
       - name: Configure Docker for GCR
         run: gcloud auth configure-docker --quiet
