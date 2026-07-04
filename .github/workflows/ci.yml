@@ -86,7 +86,7 @@ jobs:
           FIREBASE_PROJECT_ID: test-project
 
       - name: Upload coverage
-        uses: codecov/codecov-action@v4
+        uses: codecov/codecov-action@v7
         with:
           files: ./apps/streamline/coverage/lcov.info
           fail_ci_if_error: false
