@@ -24,7 +24,7 @@
   "dependencies": {
     "@google-cloud/storage": "^7.7.0",
     "@google-cloud/tasks": "^5.4.0",
-    "@google/generative-ai": "^0.2.1",
+    "@google/generative-ai": "^0.24.1",
     "@listinglogic/db": "workspace:*",
     "@listinglogic/logger": "workspace:*",
     "@listinglogic/types": "workspace:*",
