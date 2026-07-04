@@ -1,0 +1,8 @@
+# Global owners
+*                           @skh8erboi113-ai
+
+# Critical infrastructure
+/.github/                   @skh8erboi113-ai
+/firestore.rules            @skh8erboi113-ai
+/apps/streamline/src/config/ @skh8erboi113-ai
+/apps/streamline/src/middleware/security.ts @skh8erboi113-ai
