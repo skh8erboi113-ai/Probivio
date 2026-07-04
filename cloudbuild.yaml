@@ -1,0 +1,12 @@
+steps:
+  - name: 'gcr.io/cloud-builders/docker'
+    args:
+      - 'build'
+      - '-f'
+      - 'apps/streamline/Dockerfile'
+      - '-t'
+      - '${LOCATION}-docker.pkg.dev/$PROJECT_ID/cloud-run-source-deploy/probivio:$COMMIT_SHA'
+      - '.'
+
+images:
+  - '${LOCATION}-docker.pkg.dev/$PROJECT_ID/cloud-run-source-deploy/probivio:$COMMIT_SHA'
