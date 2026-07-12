@@ -69,11 +69,13 @@ interface CursorPayload {
  * page, which Firestore requires as a compound cursor to paginate stably
  * when the sort field has duplicate values across documents.
  */
-function encodeCursor(payload: CursorPayload): string {
+/** Exported for unit testing — internal to the pagination implementation otherwise. */
+export function encodeCursor(payload: CursorPayload): string {
   return Buffer.from(JSON.stringify(payload)).toString('base64url');
 }
 
-function decodeCursor(cursor: string): CursorPayload {
+/** Exported for unit testing — internal to the pagination implementation otherwise. */
+export function decodeCursor(cursor: string): CursorPayload {
   try {
     const parsed = JSON.parse(Buffer.from(cursor, 'base64url').toString('utf8')) as CursorPayload;
     if (typeof parsed !== 'object' || parsed === null || !('id' in parsed)) {

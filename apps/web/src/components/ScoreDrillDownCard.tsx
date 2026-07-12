@@ -2,6 +2,7 @@ import { Bar, BarChart, CartesianGrid, Cell, ResponsiveContainer, Tooltip, XAxis
 
 import { Badge } from './ui/Badge';
 import { Card } from './ui/Card';
+import { ApiClientError } from '../api/client';
 import { useScoreExplanation } from '../hooks/useLeads';
 import { fonts, palette, spacing } from '../theme';
 
@@ -39,7 +40,7 @@ export function ScoreDrillDownCard({ leadId }: Props) {
   }
 
   if (isError || !data) {
-    const notFound = error instanceof Error && error.message.toLowerCase().includes('not found');
+    const notFound = error instanceof ApiClientError && error.isNotFound;
     return (
       <Card accent="teal">
         <SectionTitle>Why this score</SectionTitle>

@@ -33,17 +33,23 @@ jobs:
       - name: Install dependencies
         run: pnpm install --no-frozen-lockfile
 
-      - name: Format check
+      # Formatting is deliberately advisory, not blocking: the codebase has
+      # pre-existing style drift across ~100 files that predates these gates,
+      # and a mass reformat is its own risky, unreviewable diff. Run
+      # `pnpm format` locally before a PR if you want to help chip away at it.
+      - name: Format check (advisory)
         run: pnpm format:check
         continue-on-error: true
 
+      # Blocking: every package now has a real, working ESLint config (see
+      # packages/*/.eslintrc.cjs) and `pnpm lint` exits 0 on a clean tree.
+      # A red build here means an actual lint error, not a broken config.
       - name: Lint
         run: pnpm lint
-        continue-on-error: true
 
+      # Blocking: full monorepo type-checks clean via project references.
       - name: Type check
         run: pnpm type-check
-        continue-on-error: true
 
   test:
     name: Test
@@ -76,9 +82,23 @@ jobs:
 
       - name: Build packages
         run: pnpm build --filter='./packages/*'
-        continue-on-error: true
 
-      - name: Run unit tests with coverage
+      # Blocking: `pnpm test` (no coverage thresholds) passes cleanly across
+      # every package today — this is the actual pass/fail signal for CI.
+      - name: Run unit + integration tests
+        run: pnpm test
+        env:
+          NODE_ENV: test
+          REDIS_URL: redis://localhost:6379
+          JWT_SECRET: test-secret-min-32-chars-for-ci-pipeline-only
+          SESSION_SECRET: test-session-min-32-chars-for-ci-pipeline-only
+          FIREBASE_PROJECT_ID: test-project
+
+      # Coverage reporting stays advisory: apps/web and packages/db don't yet
+      # have coverage-threshold-worthy suites, and Codecov upload failures
+      # (rate limits, flaky network) shouldn't block merges either way. This
+      # step is purely informational — it never fails the job.
+      - name: Coverage report (advisory)
         run: pnpm test:coverage
         continue-on-error: true
         env:
@@ -113,9 +133,10 @@ jobs:
       - name: Install dependencies
         run: pnpm install --no-frozen-lockfile
 
+      # Blocking: `pnpm audit --audit-level=high` reports 0 known
+      # vulnerabilities against the current lockfile as of this pass.
       - name: Security audit
         run: pnpm audit --audit-level=high
-        continue-on-error: true
 
   build:
     name: Build
@@ -136,6 +157,7 @@ jobs:
       - name: Install dependencies
         run: pnpm install --no-frozen-lockfile
 
+      # Blocking: `pnpm build` (turbo run build across every package) succeeds
+      # cleanly today, including the web app's production `vite build`.
       - name: Build all
         run: pnpm build
-        continue-on-error: true
