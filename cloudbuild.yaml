@@ -6,6 +6,12 @@ steps:
       - 'build'
       - '-f'
       - 'apps/streamline/Dockerfile'
+      # Without an explicit --target, `docker build` uses the LAST stage
+      # defined in the Dockerfile, which is `dev` (tsx watch mode) — not
+      # `production`. That shipped a dev-mode container with an in-process
+      # watcher instead of the compiled, production-optimized build.
+      - '--target'
+      - 'production'
       - '-t'
       - '${LOCATION}-docker.pkg.dev/$PROJECT_ID/cloud-run-source-deploy/probivio:$COMMIT_SHA'
       - '.'

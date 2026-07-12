@@ -1,21 +1,30 @@
 # =============================================================================
 # Streamline Probate Engine — Multi-stage Docker build
-# Target: Google Cloud Run (Alpine Linux, minimal attack surface)
+# Target: Google Cloud Run
+#
+# Base image: Debian slim, NOT Alpine. onnxruntime-node's native binary
+# (used for per-operator ML lead scoring) is dynamically linked against
+# glibc and requires /lib64/ld-linux-x86-64.so.2, which does not exist on
+# musl-libc-based Alpine — the container fails at startup with
+# "Error loading shared library ld-linux-x86-64.so.2" if built on Alpine.
+# Debian slim is still a reasonably small, well-maintained base and avoids
+# this whole class of native-binary incompatibility.
 # =============================================================================
 
 # ─── Stage 1: Base ────────────────────────────────────────────────────────────
-FROM node:23.3.0-alpine3.19 AS base
+FROM node:23.3.0-slim AS base
 
-# Install security updates
-RUN apk update && apk upgrade --no-cache && \
-    apk add --no-cache \
+# Install security updates + runtime tools
+RUN apt-get update && apt-get upgrade -y && \
+    apt-get install -y --no-install-recommends \
       dumb-init \
       curl \
-    && rm -rf /var/cache/apk/*
+      ca-certificates \
+    && rm -rf /var/lib/apt/lists/*
 
 # Non-root user for all stages
-RUN addgroup -g 1001 -S nodejs && \
-    adduser -S nodejs -u 1001 -G nodejs
+RUN groupadd -g 1001 nodejs && \
+    useradd -u 1001 -g nodejs -s /bin/bash -m nodejs
 
 WORKDIR /app
 
