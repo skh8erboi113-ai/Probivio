@@ -135,7 +135,7 @@ jobs:
 
       - name: Install dependencies
         run: pnpm install --no-frozen-lockfile
-o
+
       - name: Build all
         run: pnpm build
         continue-on-error: true
