@@ -6,8 +6,8 @@ import type {
   ScoreDrillDown,
   ScoreResult,
   SkipTraceResult,
-} from '@listinglogic/types';
-import type { CreateLeadPayload, UpdateLeadPayload } from '@listinglogic/validators';
+} from '@probivio/types';
+import type { CreateLeadPayload, UpdateLeadPayload } from '@probivio/validators';
 
 import { api } from './client';
 

@@ -1,5 +1,5 @@
 /**
- * @listinglogic/types
+ * @probivio/types
  *
  * Single source of truth for domain models across all apps.
  * Never import from a sub-path externally — always use the package name.

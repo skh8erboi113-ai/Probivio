@@ -14,7 +14,7 @@ const OPENAPI_SPEC = {
     title: 'Streamline Probate Engine API',
     version: '2.0.0',
     description: 'AI-powered real estate wholesaling platform. All routes require Firebase Auth JWT.',
-    contact: { name: 'ListingLogic', url: 'https://listinglogic.com' },
+    contact: { name: 'Probivio', url: 'https://probivio.com' },
     license: { name: 'Proprietary' },
   },
   servers: [

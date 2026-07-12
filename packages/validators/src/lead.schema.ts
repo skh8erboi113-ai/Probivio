@@ -1,4 +1,4 @@
-import { LeadSource, LeadStatus, MotivationLevel, PropertyCondition } from '@listinglogic/types';
+import { LeadSource, LeadStatus, MotivationLevel, PropertyCondition } from '@probivio/types';
 import { z } from 'zod';
 
 import {

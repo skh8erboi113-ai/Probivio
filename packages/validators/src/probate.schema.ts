@@ -1,4 +1,4 @@
-import { ProbateStatus } from '@listinglogic/types';
+import { ProbateStatus } from '@probivio/types';
 import { z } from 'zod';
 
 import {

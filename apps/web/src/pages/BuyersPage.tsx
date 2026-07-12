@@ -1,6 +1,6 @@
 import { Link } from 'react-router-dom';
 
-import type { Buyer } from '@listinglogic/types';
+import type { Buyer } from '@probivio/types';
 
 import { Badge } from '../components/ui/Badge';
 import { Button } from '../components/ui/Button';

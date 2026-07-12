@@ -2,7 +2,7 @@ import { Redis } from 'ioredis';
 
 import { getConfig } from './config.js';
 
-import type { Logger } from '@listinglogic/logger';
+import type { Logger } from '@probivio/logger';
 
 let cached: Redis | null = null;
 

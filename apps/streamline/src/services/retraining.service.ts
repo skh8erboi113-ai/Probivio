@@ -1,12 +1,12 @@
-import { LeadStatus, type IsoTimestamp, type OperatorId, type ScoringWeights } from '@listinglogic/types';
+import { LeadStatus, type IsoTimestamp, type OperatorId, type ScoringWeights } from '@probivio/types';
 
 import type {
   InteractionRepository,
   LeadRepository,
   ScoreHistoryRepository,
   ScoringWeightsRepository,
-} from '@listinglogic/db';
-import type { Logger } from '@listinglogic/logger';
+} from '@probivio/db';
+import type { Logger } from '@probivio/logger';
 
 /**
  * Lightweight per-operator retraining loop.

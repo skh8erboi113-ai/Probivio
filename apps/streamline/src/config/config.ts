@@ -1,4 +1,4 @@
-import { envSchema } from '@listinglogic/validators';
+import { envSchema } from '@probivio/validators';
 import { config as loadDotenv } from 'dotenv';
 
 /**

@@ -1,6 +1,6 @@
 import { timingSafeEqual } from 'node:crypto';
 
-import { runAgentSweepSchema } from '@listinglogic/validators';
+import { runAgentSweepSchema } from '@probivio/validators';
 import { Router } from 'express';
 
 import { UnauthorizedError } from '../errors/app-errors.js';
@@ -9,9 +9,9 @@ import type { AgentService } from '../services/agent.service.js';
 import type { ModelRegistryService } from '../services/model-registry.service.js';
 import type { OpsAlertsService } from '../services/ops-alerts.service.js';
 import type { RetrainingService } from '../services/retraining.service.js';
-import type { LeadRepository } from '@listinglogic/db';
-import type { Logger } from '@listinglogic/logger';
-import type { OperatorId } from '@listinglogic/types';
+import type { LeadRepository } from '@probivio/db';
+import type { Logger } from '@probivio/logger';
+import type { OperatorId } from '@probivio/types';
 
 
 /**

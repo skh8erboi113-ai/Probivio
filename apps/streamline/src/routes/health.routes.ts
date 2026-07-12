@@ -1,9 +1,9 @@
-import { pingFirestore } from '@listinglogic/db';
+import { pingFirestore } from '@probivio/db';
 import { Router } from 'express';
 
 import { pingRateLimit } from '../middleware/rate-limit.js';
 
-import type { HealthResponse } from '@listinglogic/types';
+import type { HealthResponse } from '@probivio/types';
 
 export interface HealthRouterDeps {
   readonly geminiEnabled: () => boolean;

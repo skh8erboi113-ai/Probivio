@@ -3,12 +3,12 @@ import type {
   ApiResponse,
   Buyer,
   BuyerMatch,
-} from '@listinglogic/types';
+} from '@probivio/types';
 import type {
   BuyerFiltersPayload,
   CreateBuyerPayload,
   UpdateBuyerPayload,
-} from '@listinglogic/validators';
+} from '@probivio/validators';
 
 import { api } from './client';
 

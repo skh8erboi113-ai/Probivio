@@ -1,6 +1,6 @@
 import { loadConfig } from '../config/config.js';
 
-import type { Logger } from '@listinglogic/logger';
+import type { Logger } from '@probivio/logger';
 
 
 /**

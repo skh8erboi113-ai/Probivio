@@ -1,7 +1,7 @@
 import { Storage } from '@google-cloud/storage';
 
-import type { ScoringWeightsRepository } from '@listinglogic/db';
-import type { Logger } from '@listinglogic/logger';
+import type { ScoringWeightsRepository } from '@probivio/db';
+import type { Logger } from '@probivio/logger';
 
 /**
  * Loads ONNX model artifacts from Cloud Storage and caches them in memory.

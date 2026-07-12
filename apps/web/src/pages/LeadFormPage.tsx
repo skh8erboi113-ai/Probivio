@@ -1,7 +1,7 @@
 import { useState, type FormEvent } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 
-import type { CreateLeadPayload } from '@listinglogic/validators';
+import type { CreateLeadPayload } from '@probivio/validators';
 
 import { Button } from '../components/ui/Button';
 import { Card } from '../components/ui/Card';

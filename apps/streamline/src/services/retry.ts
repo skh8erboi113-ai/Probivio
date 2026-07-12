@@ -1,4 +1,4 @@
-import type { Logger } from '@listinglogic/logger';
+import type { Logger } from '@probivio/logger';
 
 /**
  * Exponential backoff with jitter.

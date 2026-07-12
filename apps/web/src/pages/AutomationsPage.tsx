@@ -1,6 +1,6 @@
 import { useState } from 'react';
 
-import type { AgentDecisionLog } from '@listinglogic/types';
+import type { AgentDecisionLog } from '@probivio/types';
 
 import { Badge } from '../components/ui/Badge';
 import { Button } from '../components/ui/Button';

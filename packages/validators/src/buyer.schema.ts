@@ -1,4 +1,4 @@
-import { BuyerStatus, BuyerType, InvestmentStrategy } from '@listinglogic/types';
+import { BuyerStatus, BuyerType, InvestmentStrategy } from '@probivio/types';
 import { z } from 'zod';
 
 import {

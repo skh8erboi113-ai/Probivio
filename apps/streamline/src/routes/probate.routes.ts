@@ -1,4 +1,4 @@
-import { scanProbatePdfSchema } from '@listinglogic/validators';
+import { scanProbatePdfSchema } from '@probivio/validators';
 import { Router } from 'express';
 
 import { requireAuth } from '../middleware/auth.js';
@@ -6,8 +6,8 @@ import { aiRateLimiter } from '../middleware/rate-limit.js';
 import { validate } from '../middleware/validate.js';
 
 import type { ProbateService } from '../services/probate.service.js';
-import type { ProbateRepository } from '@listinglogic/db';
-import type { ApiResponse, ProbateCase } from '@listinglogic/types';
+import type { ProbateRepository } from '@probivio/db';
+import type { ApiResponse, ProbateCase } from '@probivio/types';
 
 export interface ProbateRouterDeps {
   readonly probateRepo: ProbateRepository;

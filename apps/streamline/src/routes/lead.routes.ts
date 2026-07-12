@@ -4,7 +4,7 @@ import {
   updateLeadSchema,
   type CreateLeadPayload,
   type UpdateLeadPayload,
-} from '@listinglogic/validators';
+} from '@probivio/validators';
 import { Router } from 'express';
 
 import { NotFoundError } from '../errors/app-errors.js';
@@ -16,7 +16,7 @@ import type { EventPublisherService } from '../realtime/event-publisher.service.
 import type { AgentService } from '../services/agent.service.js';
 import type { ScoringService } from '../services/scoring.service.js';
 import type { SkipTraceService } from '../services/skip-trace.service.js';
-import type { LeadRepository } from '@listinglogic/db';
+import type { LeadRepository } from '@probivio/db';
 import type {
   ApiListResponse,
   ApiResponse,
@@ -25,7 +25,7 @@ import type {
   OperatorId,
   ScoreDrillDown,
   SkipTraceResult,
-} from '@listinglogic/types';
+} from '@probivio/types';
 
 export interface LeadRouterDeps {
   readonly leadRepo: LeadRepository;

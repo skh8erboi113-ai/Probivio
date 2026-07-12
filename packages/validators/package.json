@@ -1,5 +1,5 @@
 {
-  "name": "@listinglogic/validators",
+  "name": "@probivio/validators",
   "version": "1.0.0",
   "private": true,
   "description": "Zod validation schemas \u2014 single source of truth for input validation",
@@ -21,7 +21,7 @@
     "clean": "rm -rf dist .turbo *.tsbuildinfo"
   },
   "dependencies": {
-    "@listinglogic/types": "workspace:*",
+    "@probivio/types": "workspace:*",
     "zod": "^4.4.3"
   },
   "devDependencies": {

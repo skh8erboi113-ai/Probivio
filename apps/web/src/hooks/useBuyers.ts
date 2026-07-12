@@ -2,7 +2,7 @@ import type {
   BuyerFiltersPayload,
   CreateBuyerPayload,
   UpdateBuyerPayload,
-} from '@listinglogic/validators';
+} from '@probivio/validators';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
 import { buyersApi } from '../api/buyers.api';

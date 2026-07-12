@@ -1,4 +1,4 @@
-import { ErrorCode } from '@listinglogic/types';
+import { ErrorCode } from '@probivio/types';
 
 /**
  * Domain-layer error hierarchy. HTTP layer maps these to status codes.

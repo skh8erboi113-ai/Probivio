@@ -1,6 +1,6 @@
-import { ConflictError as DbConflictError } from '@listinglogic/db';
-import { LeadStatus } from '@listinglogic/types';
-import { agentDecisionSchema } from '@listinglogic/validators';
+import { ConflictError as DbConflictError } from '@probivio/db';
+import { LeadStatus } from '@probivio/types';
+import { agentDecisionSchema } from '@probivio/validators';
 
 import { loadConfig } from '../config/config.js';
 
@@ -12,8 +12,8 @@ import type {
   InteractionRepository,
   LeadRepository,
   OperatorAgentSettingsRepository,
-} from '@listinglogic/db';
-import type { Logger } from '@listinglogic/logger';
+} from '@probivio/db';
+import type { Logger } from '@probivio/logger';
 import type {
   AgentAction,
   AgentAlternative,
@@ -23,7 +23,7 @@ import type {
   Lead,
   LeadId,
   OperatorId,
-} from '@listinglogic/types';
+} from '@probivio/types';
 
 /**
  * Gemini-driven automation decision engine.

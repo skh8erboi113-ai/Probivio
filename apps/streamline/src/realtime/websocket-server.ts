@@ -4,7 +4,7 @@ import { WebSocketServer, WebSocket } from 'ws';
 
 import { getPubSub, type RealtimeEvent } from './pubsub.js';
 
-import type { Logger } from '@listinglogic/logger';
+import type { Logger } from '@probivio/logger';
 import type { IncomingMessage, Server as HttpServer } from 'node:http';
 import type { Duplex } from 'node:stream';
 

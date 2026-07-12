@@ -5,7 +5,7 @@ import {
   updateBuyerSchema,
   type CreateBuyerPayload,
   type UpdateBuyerPayload,
-} from '@listinglogic/validators';
+} from '@probivio/validators';
 import { Router } from 'express';
 
 import { requireAuth } from '../middleware/auth.js';
@@ -15,8 +15,8 @@ import { stripUndefined } from '../utils/strip-undefined.js';
 
 import type { EventPublisherService } from '../realtime/event-publisher.service.js';
 import type { BuyerMatchingService } from '../services/buyer-matching.service.js';
-import type { BuyerRepository } from '@listinglogic/db';
-import type { ApiListResponse, ApiResponse, Buyer, LeadId, UsStateCode } from '@listinglogic/types';
+import type { BuyerRepository } from '@probivio/db';
+import type { ApiListResponse, ApiResponse, Buyer, LeadId, UsStateCode } from '@probivio/types';
 
 export interface BuyerRouterDeps {
   readonly buyerRepo: BuyerRepository;

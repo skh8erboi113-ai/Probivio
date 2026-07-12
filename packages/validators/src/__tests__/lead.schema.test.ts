@@ -1,4 +1,4 @@
-import { LeadSource, LeadStatus } from '@listinglogic/types';
+import { LeadSource, LeadStatus } from '@probivio/types';
 import { describe, expect, it } from 'vitest';
 
 import { createLeadSchema, updateLeadSchema } from '../lead.schema.js';

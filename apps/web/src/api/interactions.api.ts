@@ -1,5 +1,5 @@
-import type { ApiListResponse, ApiResponse, Interaction } from '@listinglogic/types';
-import type { CreateInteractionPayload } from '@listinglogic/validators';
+import type { ApiListResponse, ApiResponse, Interaction } from '@probivio/types';
+import type { CreateInteractionPayload } from '@probivio/validators';
 
 import { api } from './client';
 

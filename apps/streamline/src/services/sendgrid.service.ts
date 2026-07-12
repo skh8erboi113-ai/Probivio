@@ -6,7 +6,7 @@ import { ExternalApiError, InternalError } from '../errors/app-errors.js';
 import { CircuitBreaker } from './circuit-breaker.js';
 import { RetryPredicates, retryWithBackoff } from './retry.js';
 
-import type { Logger } from '@listinglogic/logger';
+import type { Logger } from '@probivio/logger';
 
 export interface EmailResult {
   readonly messageId: string | undefined;

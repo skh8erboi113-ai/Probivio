@@ -1,4 +1,4 @@
-import { createLogger, type Logger } from '@listinglogic/logger';
+import { createLogger, type Logger } from '@probivio/logger';
 
 import { loadConfig } from './config.js';
 

@@ -1,18 +1,18 @@
-import { ProbateStatus } from '@listinglogic/types';
+import { ProbateStatus } from '@probivio/types';
 
 import { ConflictError, ValidationError } from '../errors/app-errors.js';
 
 import type { GeminiService } from './gemini.service.js';
 import type { PdfParserService } from './pdf-parser.service.js';
-import type { ProbateRepository } from '@listinglogic/db';
-import type { Logger } from '@listinglogic/logger';
+import type { ProbateRepository } from '@probivio/db';
+import type { Logger } from '@probivio/logger';
 import type {
   IsoTimestamp,
   OperatorId,
   ProbateCase,
   ProbateExtractionResult,
   UsStateCode,
-} from '@listinglogic/types';
+} from '@probivio/types';
 
 export class ProbateService {
   private readonly logger: Logger;

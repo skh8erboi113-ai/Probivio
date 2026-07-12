@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 
-import type { BuyerMatch, Interaction, Lead, SkipTraceResult } from '@listinglogic/types';
+import type { BuyerMatch, Interaction, Lead, SkipTraceResult } from '@probivio/types';
 
 import { ScoreDrillDownCard } from '../components/ScoreDrillDownCard';
 import { Badge } from '../components/ui/Badge';

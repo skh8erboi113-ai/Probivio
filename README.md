@@ -1,11 +1,11 @@
-# ListingLogic
+# Probivio
 
 **Streamline Probate Engine v2.0** — production-grade AI-powered real estate wholesaling platform.
 
 Modular monolith deployed on Google Cloud Run. Firebase-native. Multi-tenant with row-level security. Self-improving ML scoring with per-operator model weights.
 
-[![CI](https://github.com/YOUR_ORG/listinglogic/actions/workflows/ci.yml/badge.svg)](https://github.com/YOUR_ORG/listinglogic/actions/workflows/ci.yml)
-[![Coverage](https://codecov.io/gh/YOUR_ORG/listinglogic/branch/main/graph/badge.svg)](https://codecov.io/gh/YOUR_ORG/listinglogic)
+[![CI](https://github.com/skh8erboi113-ai/Probivio/actions/workflows/ci.yml/badge.svg)](https://github.com/skh8erboi113-ai/Probivio/actions/workflows/ci.yml)
+[![Coverage](https://codecov.io/gh/skh8erboi113-ai/Probivio/branch/main/graph/badge.svg)](https://codecov.io/gh/skh8erboi113-ai/Probivio)
 [![License: Proprietary](https://img.shields.io/badge/License-Proprietary-red.svg)]()
 
 ---
@@ -28,7 +28,7 @@ The design goal is **acquisition-readiness**: clean modular boundaries, complete
 
 ## Repository layout
 
-    listinglogic/
+    probivio/
     ├── apps/
     │   ├── streamline/          Express API — CRM, scoring, ML, integrations
     │   └── web/                 React 18 + Vite dashboard
@@ -169,7 +169,7 @@ Every one of these is enforced in code:
 
 *Includes Gemini API timeouts (circuit breaks after 5 consecutive failures)
 
-Verify with `pnpm --filter @listinglogic/streamline test:load:baseline`.
+Verify with `pnpm --filter @probivio/streamline test:load:baseline`.
 
 ---
 
@@ -188,4 +188,4 @@ Internal only. See `.github/PULL_REQUEST_TEMPLATE.md` for PR guidelines.
 
 ## License
 
-Proprietary — © 2026 ListingLogic. All rights reserved.
+Proprietary — © 2026 Probivio. All rights reserved.

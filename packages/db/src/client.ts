@@ -1,7 +1,7 @@
 import { type App, cert, deleteApp, getApps, initializeApp } from 'firebase-admin/app';
 import { type Firestore, getFirestore } from 'firebase-admin/firestore';
 
-import type { Logger } from '@listinglogic/logger';
+import type { Logger } from '@probivio/logger';
 
 /**
  * Firebase Admin singleton.
@@ -21,7 +21,7 @@ export interface FirebaseConfig {
 let cachedApp: App | null = null;
 let cachedFirestore: Firestore | null = null;
 
-const DEFAULT_APP_NAME = 'listinglogic';
+const DEFAULT_APP_NAME = 'probivio';
 
 export function initializeFirebase(config: FirebaseConfig, logger?: Logger): App {
   const appName = config.appName ?? DEFAULT_APP_NAME;

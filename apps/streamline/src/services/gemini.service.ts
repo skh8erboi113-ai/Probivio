@@ -1,5 +1,5 @@
 import { GoogleGenerativeAI, type GenerativeModel } from '@google/generative-ai';
-import { agentDecisionSchema, type AgentDecisionPayload } from '@listinglogic/validators';
+import { agentDecisionSchema, type AgentDecisionPayload } from '@probivio/validators';
 
 import { loadConfig } from '../config/config.js';
 import { ExternalApiError, InternalError } from '../errors/app-errors.js';
@@ -7,8 +7,8 @@ import { ExternalApiError, InternalError } from '../errors/app-errors.js';
 import { CircuitBreaker } from './circuit-breaker.js';
 import { RetryPredicates, retryWithBackoff } from './retry.js';
 
-import type { Logger } from '@listinglogic/logger';
-import type { AgentTrigger, InteractionFeatures, Lead, ProbateExtractionResult } from '@listinglogic/types';
+import type { Logger } from '@probivio/logger';
+import type { AgentTrigger, InteractionFeatures, Lead, ProbateExtractionResult } from '@probivio/types';
 
 /**
  * Gemini AI wrapper with:

@@ -1,6 +1,6 @@
 import { getPubSub, type PubSubTransport, type RealtimeEventType } from './pubsub.js';
 
-import type { Logger } from '@listinglogic/logger';
+import type { Logger } from '@probivio/logger';
 
 
 /**

@@ -1,10 +1,10 @@
-import { updateContext } from '@listinglogic/logger';
+import { updateContext } from '@probivio/logger';
 import { getAuth } from 'firebase-admin/auth';
 
 import { getLogger } from '../config/logger.js';
 import { UnauthorizedError } from '../errors/app-errors.js';
 
-import type { OperatorId } from '@listinglogic/types';
+import type { OperatorId } from '@probivio/types';
 import type { NextFunction, Request, Response } from 'express';
 
 

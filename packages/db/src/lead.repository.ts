@@ -1,10 +1,10 @@
-import { LeadStatus } from '@listinglogic/types';
+import { LeadStatus } from '@probivio/types';
 import { FieldPath } from 'firebase-admin/firestore';
 
 import { BaseRepository, type ListOptions, type ListResult } from './base.repository.js';
 import { Collections, Fields } from './collections.js';
 
-import type { Logger } from '@listinglogic/logger';
+import type { Logger } from '@probivio/logger';
 import type {
   IsoTimestamp,
   Lead,
@@ -13,7 +13,7 @@ import type {
   LeadSortField,
   OperatorId,
   ScoreResult,
-} from '@listinglogic/types';
+} from '@probivio/types';
 
 export interface LeadListOptions extends ListOptions {
   readonly sortBy: LeadSortField;

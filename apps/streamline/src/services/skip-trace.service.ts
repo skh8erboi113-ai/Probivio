@@ -1,4 +1,4 @@
-import { SkipTraceStatus } from '@listinglogic/types';
+import { SkipTraceStatus } from '@probivio/types';
 
 import { loadConfig } from '../config/config.js';
 import { ExternalApiError } from '../errors/app-errors.js';
@@ -6,8 +6,8 @@ import { ExternalApiError } from '../errors/app-errors.js';
 import { CircuitBreaker } from './circuit-breaker.js';
 import { RetryPredicates, retryWithBackoff } from './retry.js';
 
-import type { Logger } from '@listinglogic/logger';
-import type { SkipTraceInput, SkipTraceResult, SkipTracePhone } from '@listinglogic/types';
+import type { Logger } from '@probivio/logger';
+import type { SkipTraceInput, SkipTraceResult, SkipTracePhone } from '@probivio/types';
 
 /**
  * Skip trace service — real provider integration (BatchData property skip

@@ -1,5 +1,5 @@
 /**
- * @listinglogic/db
+ * @probivio/db
  *
  * Firestore repository layer with:
  *   - Operator isolation on every query (defense in depth)

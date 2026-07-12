@@ -5,8 +5,8 @@ import { Fields } from './collections.js';
 import { createConverter, type WithId } from './converters.js';
 import { DatabaseError, ForbiddenError, NotFoundError, OptimisticLockError } from './errors.js';
 
-import type { Logger } from '@listinglogic/logger';
-import type { IsoTimestamp, OperatorId } from '@listinglogic/types';
+import type { Logger } from '@probivio/logger';
+import type { IsoTimestamp, OperatorId } from '@probivio/types';
 import type {
   CollectionReference,
   DocumentReference,

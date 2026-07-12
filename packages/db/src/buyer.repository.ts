@@ -1,9 +1,9 @@
-import { BuyerStatus } from '@listinglogic/types';
+import { BuyerStatus } from '@probivio/types';
 
 import { BaseRepository, type ListOptions, type ListResult } from './base.repository.js';
 import { Collections, Fields } from './collections.js';
 
-import type { Logger } from '@listinglogic/logger';
+import type { Logger } from '@probivio/logger';
 import type {
   Buyer,
   BuyerId,
@@ -11,7 +11,7 @@ import type {
   Lead,
   OperatorId,
   UsStateCode,
-} from '@listinglogic/types';
+} from '@probivio/types';
 
 export interface BuyerFilters {
   readonly type?: string;

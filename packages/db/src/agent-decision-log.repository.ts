@@ -3,14 +3,14 @@ import { BaseRepository, type ListOptions, type ListResult } from './base.reposi
 import { Collections, Fields } from './collections.js';
 import { ConflictError, NotFoundError } from './errors.js';
 
-import type { Logger } from '@listinglogic/logger';
+import type { Logger } from '@probivio/logger';
 import type {
   AgentDecisionLog,
   AgentTrigger,
   IsoTimestamp,
   LeadId,
   OperatorId,
-} from '@listinglogic/types';
+} from '@probivio/types';
 
 export interface AgentDecisionLogFilters {
   readonly leadId?: LeadId;

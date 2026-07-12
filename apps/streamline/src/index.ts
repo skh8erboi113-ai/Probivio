@@ -1,4 +1,4 @@
-import { initializeFirebase, shutdownFirebase } from '@listinglogic/db';
+import { initializeFirebase, shutdownFirebase } from '@probivio/db';
 
 import { createApp } from './app.js';
 import { loadConfig } from './config/config.js';

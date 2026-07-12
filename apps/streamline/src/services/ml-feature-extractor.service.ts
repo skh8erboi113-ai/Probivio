@@ -1,10 +1,10 @@
-import { PropertyCondition, MotivationLevel } from '@listinglogic/types';
+import { PropertyCondition, MotivationLevel } from '@probivio/types';
 
 import type {
   InteractionFeatures,
   Lead,
   ScoreHistory,
-} from '@listinglogic/types';
+} from '@probivio/types';
 
 /**
  * Feature extractor — mirror of services/ml-trainer/ml_trainer/features.py

@@ -3,7 +3,7 @@ import {
   MotivationLevel,
   PropertyCondition,
   ScoreRecommendation,
-} from '@listinglogic/types';
+} from '@probivio/types';
 
 
 import type { BuyerNotificationService } from './buyer-notification.service.js';
@@ -17,8 +17,8 @@ import type {
   LeadRepository,
   ScoreHistoryRepository,
   ScoringWeightsRepository,
-} from '@listinglogic/db';
-import type { Logger } from '@listinglogic/logger';
+} from '@probivio/db';
+import type { Logger } from '@probivio/logger';
 import type {
   IsoTimestamp,
   InteractionFeatures,
@@ -29,7 +29,7 @@ import type {
   ScoreFactor,
   ScoreHistory,
   ScoreResult,
-} from '@listinglogic/types';
+} from '@probivio/types';
 
 const HEURISTIC_MODEL_VERSION = '2.0.0-heuristic-fallback';
 

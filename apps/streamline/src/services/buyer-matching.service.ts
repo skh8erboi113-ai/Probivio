@@ -1,6 +1,6 @@
-import type { BuyerRepository, LeadRepository } from '@listinglogic/db';
-import type { Logger } from '@listinglogic/logger';
-import type { Buyer, BuyerMatch, Cents, Lead, LeadId, OperatorId } from '@listinglogic/types';
+import type { BuyerRepository, LeadRepository } from '@probivio/db';
+import type { Logger } from '@probivio/logger';
+import type { Buyer, BuyerMatch, Cents, Lead, LeadId, OperatorId } from '@probivio/types';
 
 /**
  * Matches a lead against an operator's buyer Rolodex.

@@ -29,16 +29,16 @@ importers:
       '@google/generative-ai':
         specifier: ^0.24.1
         version: 0.24.1
-      '@listinglogic/db':
+      '@probivio/db':
         specifier: workspace:*
         version: link:../../packages/db
-      '@listinglogic/logger':
+      '@probivio/logger':
         specifier: workspace:*
         version: link:../../packages/logger
-      '@listinglogic/types':
+      '@probivio/types':
         specifier: workspace:*
         version: link:../../packages/types
-      '@listinglogic/validators':
+      '@probivio/validators':
         specifier: workspace:*
         version: link:../../packages/validators
       '@sendgrid/mail':
@@ -153,10 +153,10 @@ importers:
 
   apps/web:
     dependencies:
-      '@listinglogic/types':
+      '@probivio/types':
         specifier: workspace:*
         version: link:../../packages/types
-      '@listinglogic/validators':
+      '@probivio/validators':
         specifier: workspace:*
         version: link:../../packages/validators
       '@tanstack/react-query':
@@ -250,10 +250,10 @@ importers:
 
   packages/db:
     dependencies:
-      '@listinglogic/logger':
+      '@probivio/logger':
         specifier: workspace:*
         version: link:../logger
-      '@listinglogic/types':
+      '@probivio/types':
         specifier: workspace:*
         version: link:../types
       firebase-admin:
@@ -351,7 +351,7 @@ importers:
 
   packages/validators:
     dependencies:
-      '@listinglogic/types':
+      '@probivio/types':
         specifier: workspace:*
         version: link:../types
       zod:

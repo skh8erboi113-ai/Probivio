@@ -3,7 +3,7 @@ version: '3.9'
 services:
   redis:
     image: redis:7-alpine
-    container_name: listinglogic-redis
+    container_name: probivio-redis
     restart: unless-stopped
     ports:
       - '6379:6379'
@@ -20,14 +20,14 @@ services:
       timeout: 3s
       retries: 5
     networks:
-      - listinglogic
+      - probivio
 
   api:
     build:
       context: .
       dockerfile: apps/streamline/Dockerfile
       target: dev
-    container_name: listinglogic-api
+    container_name: probivio-api
     restart: unless-stopped
     ports:
       - '8080:8080'
@@ -43,11 +43,11 @@ services:
       redis:
         condition: service_healthy
     networks:
-      - listinglogic
+      - probivio
 
 volumes:
   redis-data:
 
 networks:
-  listinglogic:
+  probivio:
     driver: bridge

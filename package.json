@@ -1,14 +1,14 @@
 {
-  "name": "listinglogic-monorepo",
+  "name": "probivio-monorepo",
   "version": "1.0.0",
   "private": true,
-  "description": "ListingLogic / Streamline Probate Engine — pnpm + Turborepo monorepo root",
+  "description": "Probivio / Streamline Probate Engine — pnpm + Turborepo monorepo root",
   "type": "module",
   "packageManager": "pnpm@9.15.9",
   "scripts": {
     "dev": "turbo run dev",
-    "dev:api": "turbo run dev --filter=@listinglogic/streamline",
-    "dev:web": "turbo run dev --filter=@listinglogic/web",
+    "dev:api": "turbo run dev --filter=@probivio/streamline",
+    "dev:web": "turbo run dev --filter=@probivio/web",
     "build": "turbo run build",
     "start": "node apps/streamline/dist/index.js",
     "type-check": "turbo run type-check",

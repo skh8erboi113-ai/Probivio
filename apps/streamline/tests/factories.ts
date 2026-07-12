@@ -1,4 +1,4 @@
-import type { Buyer, Lead, ProbateCase } from '@listinglogic/types';
+import type { Buyer, Lead, ProbateCase } from '@probivio/types';
 
 export const operatorId = 'op_test' as const;
 

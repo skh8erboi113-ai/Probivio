@@ -1,9 +1,9 @@
 {
-  "name": "@listinglogic/web",
+  "name": "@probivio/web",
   "version": "2.1.0",
   "private": true,
   "type": "module",
-  "description": "ListingLogic operator dashboard — React SPA",
+  "description": "Probivio operator dashboard — React SPA",
   "scripts": {
     "dev": "vite",
     "build": "tsc -b && vite build",
@@ -17,8 +17,8 @@
     "clean": "rm -rf dist coverage .turbo *.tsbuildinfo"
   },
   "dependencies": {
-    "@listinglogic/types": "workspace:*",
-    "@listinglogic/validators": "workspace:*",
+    "@probivio/types": "workspace:*",
+    "@probivio/validators": "workspace:*",
     "@tanstack/react-query": "^5.90.5",
     "@tanstack/react-query-devtools": "^5.90.5",
     "clsx": "^2.1.1",

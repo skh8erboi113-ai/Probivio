@@ -5,18 +5,18 @@ import {
   NotFoundError as DbNotFoundError,
   OptimisticLockError,
   RepositoryError,
-} from '@listinglogic/db';
+} from '@probivio/db';
 
 import { loadConfig } from '../config/config.js';
 import { getLogger } from '../config/logger.js';
 import { captureRequestException } from '../config/sentry.js';
 import { isAppError, InternalError, PayloadTooLargeError, ValidationError } from '../errors/app-errors.js';
 
-import type { ApiError } from '@listinglogic/types';
+import type { ApiError } from '@probivio/types';
 import type { NextFunction, Request, Response } from 'express';
 
 /**
- * `@listinglogic/db` repository errors are a separate hierarchy from
+ * `@probivio/db` repository errors are a separate hierarchy from
  * `AppError` (see errors/app-errors.ts) — map them to the same HTTP
  * status/code shape so a `NotFoundError` thrown by a repository doesn't
  * fall through to a generic 500.
@@ -80,7 +80,7 @@ export function errorHandler(
     return respond(res, req, err);
   }
 
-  // ─── Repository errors (@listinglogic/db) ──────────────────────────────
+  // ─── Repository errors (@probivio/db) ──────────────────────────────
   if (err instanceof RepositoryError) {
     const { statusCode, code } = repositoryErrorStatus(err);
     if (statusCode >= 500) {

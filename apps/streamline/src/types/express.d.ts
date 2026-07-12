@@ -1,4 +1,4 @@
-import type { OperatorId } from '@listinglogic/types';
+import type { OperatorId } from '@probivio/types';
 
 /**
  * Extends Express types to include our per-request context.

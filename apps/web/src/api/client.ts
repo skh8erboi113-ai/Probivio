@@ -1,4 +1,4 @@
-import type { ApiError } from '@listinglogic/types';
+import type { ApiError } from '@probivio/types';
 
 import { env } from '../config/env';
 import { getFirebaseAuth } from '../config/firebase';

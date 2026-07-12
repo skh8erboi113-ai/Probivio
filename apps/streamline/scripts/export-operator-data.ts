@@ -2,14 +2,14 @@
  * Export all data for a single operator (GDPR right-to-portability).
  *
  * Usage:
- *   pnpm --filter @listinglogic/streamline tsx scripts/export-operator-data.ts \
+ *   pnpm --filter @probivio/streamline tsx scripts/export-operator-data.ts \
  *     --operator=<uid> \
  *     --output=./operator-export.json
  */
 
 import { writeFile } from 'node:fs/promises';
 
-import { initializeFirebase } from '@listinglogic/db';
+import { initializeFirebase } from '@probivio/db';
 
 import { loadConfig } from '../src/config/config.js';
 import { getLogger } from '../src/config/logger.js';

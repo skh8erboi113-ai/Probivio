@@ -4,12 +4,12 @@
  * DESTRUCTIVE — requires --confirm=YES-DELETE flag.
  *
  * Usage:
- *   pnpm --filter @listinglogic/streamline tsx scripts/delete-operator-data.ts \
+ *   pnpm --filter @probivio/streamline tsx scripts/delete-operator-data.ts \
  *     --operator=<uid> \
  *     --confirm=YES-DELETE
  */
 
-import { getDb, initializeFirebase } from '@listinglogic/db';
+import { getDb, initializeFirebase } from '@probivio/db';
 
 import { loadConfig } from '../src/config/config.js';
 import { getLogger } from '../src/config/logger.js';

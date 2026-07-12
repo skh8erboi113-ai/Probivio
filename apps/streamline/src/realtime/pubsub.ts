@@ -4,7 +4,7 @@ import { Redis } from 'ioredis';
 
 import { getConfig } from '../config/config.js';
 
-import type { Logger } from '@listinglogic/logger';
+import type { Logger } from '@probivio/logger';
 
 /**
  * Pub/sub for real-time events, broadcast to WebSocket clients.

@@ -5,8 +5,8 @@ import { Router } from 'express';
 import { UnauthorizedError } from '../errors/app-errors.js';
 
 import type { AgentService } from '../services/agent.service.js';
-import type { Logger } from '@listinglogic/logger';
-import type { OperatorId, LeadId } from '@listinglogic/types';
+import type { Logger } from '@probivio/logger';
+import type { OperatorId, LeadId } from '@probivio/types';
 
 /**
  * Callback endpoints invoked by Cloud Tasks when scheduled work fires.

@@ -1,6 +1,6 @@
 # Streamline Probate Engine API
 
-**v2.0.0** — Express REST API powering the ListingLogic wholesaling platform.
+**v2.0.0** — Express REST API powering the Probivio wholesaling platform.
 
 ---
 

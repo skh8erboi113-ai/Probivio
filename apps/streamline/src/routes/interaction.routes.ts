@@ -1,4 +1,4 @@
-import { createInteractionSchema, type CreateInteractionPayload } from '@listinglogic/validators';
+import { createInteractionSchema, type CreateInteractionPayload } from '@probivio/validators';
 import { Router } from 'express';
 
 import { requireAuth } from '../middleware/auth.js';
@@ -8,8 +8,8 @@ import { stripUndefined } from '../utils/strip-undefined.js';
 import type { EventPublisherService } from '../realtime/event-publisher.service.js';
 import type { AgentService } from '../services/agent.service.js';
 import type { ScoringService } from '../services/scoring.service.js';
-import type { InteractionRepository } from '@listinglogic/db';
-import type { CreateInteractionInput, LeadId } from '@listinglogic/types';
+import type { InteractionRepository } from '@probivio/db';
+import type { CreateInteractionInput, LeadId } from '@probivio/types';
 
 export interface InteractionRouterDeps {
   readonly interactionRepo: InteractionRepository;

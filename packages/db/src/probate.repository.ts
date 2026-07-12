@@ -1,7 +1,7 @@
 import { BaseRepository, type ListOptions, type ListResult } from './base.repository.js';
 import { Collections, Fields } from './collections.js';
 
-import type { Logger } from '@listinglogic/logger';
+import type { Logger } from '@probivio/logger';
 import type {
   IsoTimestamp,
   LeadId,
@@ -9,7 +9,7 @@ import type {
   ProbateCase,
   ProbateCaseId,
   UsStateCode,
-} from '@listinglogic/types';
+} from '@probivio/types';
 
 
 export interface ProbateFilters {

@@ -1,7 +1,7 @@
 import { BaseRepository } from './base.repository.js';
 import { Collections, Fields } from './collections.js';
 
-import type { Logger } from '@listinglogic/logger';
+import type { Logger } from '@probivio/logger';
 import type {
   IsoTimestamp,
   LeadId,
@@ -9,7 +9,7 @@ import type {
   ScoreHistory,
   ScoreHistoryId,
   ScoreResult,
-} from '@listinglogic/types';
+} from '@probivio/types';
 
 
 /**

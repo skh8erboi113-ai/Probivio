@@ -3,8 +3,8 @@ import { type Firestore } from 'firebase-admin/firestore';
 import { getDb } from './client.js';
 import { Collections, Fields } from './collections.js';
 
-import type { Logger } from '@listinglogic/logger';
-import type { IsoTimestamp, ScoringWeights, ScoringWeightsHistoryEntry } from '@listinglogic/types';
+import type { Logger } from '@probivio/logger';
+import type { IsoTimestamp, ScoringWeights, ScoringWeightsHistoryEntry } from '@probivio/types';
 
 /**
  * Scoring weights store. There is exactly one "current" document per

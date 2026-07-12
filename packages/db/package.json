@@ -1,5 +1,5 @@
 {
-  "name": "@listinglogic/db",
+  "name": "@probivio/db",
   "version": "1.0.0",
   "private": true,
   "description": "Firestore repositories with operator isolation and transaction support",
@@ -21,8 +21,8 @@
     "clean": "rm -rf dist .turbo *.tsbuildinfo"
   },
   "dependencies": {
-    "@listinglogic/logger": "workspace:*",
-    "@listinglogic/types": "workspace:*",
+    "@probivio/logger": "workspace:*",
+    "@probivio/types": "workspace:*",
     "firebase-admin": "^14.1.0"
   },
   "devDependencies": {

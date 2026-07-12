@@ -1,4 +1,4 @@
-import { generateRequestId, withContext } from '@listinglogic/logger';
+import { generateRequestId, withContext } from '@probivio/logger';
 
 import type { NextFunction, Request, Response } from 'express';
 

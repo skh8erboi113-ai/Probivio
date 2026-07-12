@@ -1,4 +1,4 @@
-# @listinglogic/web
+# @probivio/web
 
 Operator dashboard for the Streamline Probate Engine.
 
@@ -20,7 +20,7 @@ Runs on `http://localhost:5173` with API proxy to `http://localhost:8080`.
 
 ## Building
 
-    pnpm --filter @listinglogic/web build
+    pnpm --filter @probivio/web build
 
 Output in `apps/web/dist/`. Deploy to Firebase Hosting, Vercel, Netlify, or any static host.
 
@@ -40,11 +40,11 @@ Every network call goes through `lib/api-client.ts` which attaches Firebase JWT 
 
 ## Testing
 
-    pnpm --filter @listinglogic/web test
+    pnpm --filter @probivio/web test
 
 Coverage thresholds: 70% lines/functions/statements, 65% branches.
 
 ## Firebase Hosting deploy
 
-    pnpm --filter @listinglogic/web build
+    pnpm --filter @probivio/web build
     firebase deploy --only hosting

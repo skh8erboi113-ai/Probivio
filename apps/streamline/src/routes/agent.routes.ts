@@ -2,7 +2,7 @@ import {
   agentDecisionLogFiltersSchema,
   resolveAgentDecisionApprovalSchema,
   updateOperatorAgentSettingsSchema,
-} from '@listinglogic/validators';
+} from '@probivio/validators';
 import { Router } from 'express';
 
 import { requireAuth } from '../middleware/auth.js';
@@ -10,14 +10,14 @@ import { aiRateLimiter } from '../middleware/rate-limit.js';
 import { validate } from '../middleware/validate.js';
 
 import type { AgentService } from '../services/agent.service.js';
-import type { AgentDecisionLogRepository, OperatorAgentSettingsRepository } from '@listinglogic/db';
+import type { AgentDecisionLogRepository, OperatorAgentSettingsRepository } from '@probivio/db';
 import type {
   AgentDecisionLog,
   ApiListResponse,
   ApiResponse,
   LeadId,
   OperatorAgentSettings,
-} from '@listinglogic/types';
+} from '@probivio/types';
 
 export interface AgentRouterDeps {
   readonly decisionLogRepo: AgentDecisionLogRepository;

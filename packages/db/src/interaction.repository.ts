@@ -1,9 +1,9 @@
-import { InteractionOutcome, InteractionType } from '@listinglogic/types';
+import { InteractionOutcome, InteractionType } from '@probivio/types';
 
 import { BaseRepository } from './base.repository.js';
 import { Collections, Fields } from './collections.js';
 
-import type { Logger } from '@listinglogic/logger';
+import type { Logger } from '@probivio/logger';
 import type {
   CreateInteractionInput,
   Interaction,
@@ -11,7 +11,7 @@ import type {
   IsoTimestamp,
   LeadId,
   OperatorId,
-} from '@listinglogic/types';
+} from '@probivio/types';
 
 /**
  * Interactions are append-only — no updates or deletes.

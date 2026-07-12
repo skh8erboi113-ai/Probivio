@@ -2,20 +2,20 @@
  * Seed sample operator data for demos and manual testing.
  *
  * Usage:
- *   pnpm --filter @listinglogic/streamline tsx scripts/seed-demo-data.ts \
+ *   pnpm --filter @probivio/streamline tsx scripts/seed-demo-data.ts \
  *     --operator=<firebase-uid>
  *
  * DO NOT run against production without explicit approval.
  */
 
-import { initializeFirebase } from '@listinglogic/db';
+import { initializeFirebase } from '@probivio/db';
 import type {
   BuyerType,
   InvestmentStrategy,
   LeadSource,
   MotivationLevel,
   PropertyCondition,
-} from '@listinglogic/types';
+} from '@probivio/types';
 
 import { loadConfig } from '../src/config/config.js';
 import { getLogger } from '../src/config/logger.js';

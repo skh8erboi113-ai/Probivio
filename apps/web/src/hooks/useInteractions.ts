@@ -1,4 +1,4 @@
-import type { CreateInteractionPayload } from '@listinglogic/validators';
+import type { CreateInteractionPayload } from '@probivio/validators';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
 import { interactionsApi } from '../api/interactions.api';

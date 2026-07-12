@@ -3,7 +3,7 @@ import * as ort from 'onnxruntime-node';
 import { CircuitOpenError, InternalError } from '../errors/app-errors.js';
 
 import type { CachedModel } from './model-registry.service.js';
-import type { Logger } from '@listinglogic/logger';
+import type { Logger } from '@probivio/logger';
 
 /**
  * ONNX model inference wrapper.

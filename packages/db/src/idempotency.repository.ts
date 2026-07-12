@@ -4,7 +4,7 @@ import { getDb } from './client.js';
 import { Collections } from './collections.js';
 import { ConflictError } from './errors.js';
 
-import type { Logger } from '@listinglogic/logger';
+import type { Logger } from '@probivio/logger';
 
 interface IdempotencyRecord {
   readonly key: string;

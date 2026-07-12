@@ -1,7 +1,7 @@
 import { describe, it, expect, vi } from 'vitest';
 
-import type { LeadId, OperatorId, IsoTimestamp } from '@listinglogic/types';
-import type { LeadRepository, InteractionRepository, ScoreHistoryRepository, ScoringWeightsRepository, ScoringWeights } from '@listinglogic/db';
+import type { LeadId, OperatorId, IsoTimestamp } from '@probivio/types';
+import type { LeadRepository, InteractionRepository, ScoreHistoryRepository, ScoringWeightsRepository, ScoringWeights } from '@probivio/db';
 import type { GeminiService } from '../../src/services/gemini.service';
 import type { ModelRegistryService } from '../../src/services/model-registry.service';
 import type { OnnxInferenceService } from '../../src/services/onnx-inference.service';

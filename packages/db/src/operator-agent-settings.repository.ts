@@ -1,11 +1,11 @@
-import { DEFAULT_AUTONOMY_THRESHOLD } from '@listinglogic/types';
+import { DEFAULT_AUTONOMY_THRESHOLD } from '@probivio/types';
 import { type Firestore } from 'firebase-admin/firestore';
 
 import { getDb } from './client.js';
 import { Collections } from './collections.js';
 
-import type { Logger } from '@listinglogic/logger';
-import type { IsoTimestamp, OperatorAgentSettings, UpdateOperatorAgentSettingsInput } from '@listinglogic/types';
+import type { Logger } from '@probivio/logger';
+import type { IsoTimestamp, OperatorAgentSettings, UpdateOperatorAgentSettingsInput } from '@probivio/types';
 
 /**
  * Per-operator "confidence-gated autonomy" dial for the Gemini agent — one

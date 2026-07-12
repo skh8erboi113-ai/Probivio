@@ -1,4 +1,4 @@
-import { AgentTrigger } from '@listinglogic/types';
+import { AgentTrigger } from '@probivio/types';
 import { z } from 'zod';
 
 import { leadStatusSchema } from './lead.schema.js';

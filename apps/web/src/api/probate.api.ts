@@ -1,5 +1,5 @@
-import type { ApiResponse, ProbateCase } from '@listinglogic/types';
-import type { ScanProbatePdfPayload } from '@listinglogic/validators';
+import type { ApiResponse, ProbateCase } from '@probivio/types';
+import type { ScanProbatePdfPayload } from '@probivio/validators';
 
 import { api } from './client';
 

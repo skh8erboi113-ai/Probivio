@@ -9,7 +9,7 @@ import {
   ProbateRepository,
   ScoreHistoryRepository,
   ScoringWeightsRepository,
-} from '@listinglogic/db';
+} from '@probivio/db';
 
 import { getLogger } from './config/logger.js';
 import {
@@ -41,7 +41,7 @@ import { createSendGridService, type SendGridService } from './services/sendgrid
 import { createSkipTraceService, type SkipTraceService } from './services/skip-trace.service.js';
 import { createTaskQueueService, type TaskQueueService } from './services/task-queue.service.js';
 
-import type { Logger } from '@listinglogic/logger';
+import type { Logger } from '@probivio/logger';
 
 export interface AppContainer {
   readonly logger: Logger;

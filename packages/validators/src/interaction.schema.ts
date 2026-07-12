@@ -1,4 +1,4 @@
-import { InteractionOutcome, InteractionType } from '@listinglogic/types';
+import { InteractionOutcome, InteractionType } from '@probivio/types';
 import { z } from 'zod';
 
 import { isoTimestampSchema, paginationSchema } from './primitives.js';

@@ -5,7 +5,7 @@ import type { Application } from 'express';
 import { createApp } from '../../src/app.js';
 import { createLeadRouter } from '../../src/routes/lead.routes.js';
 import { makeAuthHeader, makeCreateLeadInput, makeLead, TEST_OPERATOR_ID } from '../factories.js';
-import { LeadStatus } from '@listinglogic/types';
+import { LeadStatus } from '@probivio/types';
 
 // ─── Mock dependencies ────────────────────────────────────────────────────
 const mockLead = makeLead();
@@ -168,7 +168,7 @@ describe('Lead API — Integration', () => {
     });
 
     it('returns 404 for unknown lead', async () => {
-      const { NotFoundError } = await import('@listinglogic/db');
+      const { NotFoundError } = await import('@probivio/db');
       mockLeadRepo.findByIdOrThrow.mockRejectedValueOnce(
         new NotFoundError('Lead', 'nonexistent'),
       );

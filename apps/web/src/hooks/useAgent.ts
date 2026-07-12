@@ -1,4 +1,4 @@
-import type { AgentDecisionLogFiltersPayload, UpdateOperatorAgentSettingsPayload } from '@listinglogic/validators';
+import type { AgentDecisionLogFiltersPayload, UpdateOperatorAgentSettingsPayload } from '@probivio/validators';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
 import { agentApi } from '../api/agent.api';

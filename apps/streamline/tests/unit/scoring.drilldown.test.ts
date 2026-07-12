@@ -7,14 +7,14 @@ import type {
   LeadRepository,
   ScoreHistoryRepository,
   ScoringWeightsRepository,
-} from '@listinglogic/db';
+} from '@probivio/db';
 import type { GeminiService } from '../../src/services/gemini.service.js';
 import type { ModelRegistryService } from '../../src/services/model-registry.service.js';
 import type { OnnxInferenceService } from '../../src/services/onnx-inference.service.js';
 import type { MlFeatureExtractorService } from '../../src/services/ml-feature-extractor.service.js';
 import type { EventPublisherService } from '../../src/realtime/event-publisher.service.js';
 import type { BuyerNotificationService } from '../../src/services/buyer-notification.service.js';
-import type { IsoTimestamp, LeadId, OperatorId, ScoreHistory } from '@listinglogic/types';
+import type { IsoTimestamp, LeadId, OperatorId, ScoreHistory } from '@probivio/types';
 
 function makeLogger() {
   return {

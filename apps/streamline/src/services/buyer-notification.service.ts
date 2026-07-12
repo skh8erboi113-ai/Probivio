@@ -1,11 +1,11 @@
-import { DEFAULT_NOTIFICATION_THRESHOLD } from '@listinglogic/types';
+import { DEFAULT_NOTIFICATION_THRESHOLD } from '@probivio/types';
 
 import type { BuyerMatchingService } from './buyer-matching.service.js';
 import type { SendGridService } from './sendgrid.service.js';
 import type { EventPublisherService } from '../realtime/event-publisher.service.js';
-import type { BuyerMatchNotificationRepository } from '@listinglogic/db';
-import type { Logger } from '@listinglogic/logger';
-import type { BuyerMatch, Lead, OperatorId } from '@listinglogic/types';
+import type { BuyerMatchNotificationRepository } from '@probivio/db';
+import type { Logger } from '@probivio/logger';
+import type { BuyerMatch, Lead, OperatorId } from '@probivio/types';
 
 /**
  * Buyer-side matching notifications — the feature that turns this from a

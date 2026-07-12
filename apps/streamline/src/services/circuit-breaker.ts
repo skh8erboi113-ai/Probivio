@@ -1,6 +1,6 @@
 import { CircuitOpenError } from '../errors/app-errors.js';
 
-import type { Logger } from '@listinglogic/logger';
+import type { Logger } from '@probivio/logger';
 
 
 /**

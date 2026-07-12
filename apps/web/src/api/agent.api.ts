@@ -1,5 +1,5 @@
-import type { AgentDecisionLog, ApiListResponse, ApiResponse, OperatorAgentSettings } from '@listinglogic/types';
-import type { AgentDecisionLogFiltersPayload, UpdateOperatorAgentSettingsPayload } from '@listinglogic/validators';
+import type { AgentDecisionLog, ApiListResponse, ApiResponse, OperatorAgentSettings } from '@probivio/types';
+import type { AgentDecisionLogFiltersPayload, UpdateOperatorAgentSettingsPayload } from '@probivio/validators';
 
 import { api } from './client';
 

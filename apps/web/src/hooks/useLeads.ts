@@ -1,5 +1,5 @@
-import type { Lead } from '@listinglogic/types';
-import type { CreateLeadPayload, UpdateLeadPayload } from '@listinglogic/validators';
+import type { Lead } from '@probivio/types';
+import type { CreateLeadPayload, UpdateLeadPayload } from '@probivio/validators';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
 import { ApiClientError } from '../api/client';
