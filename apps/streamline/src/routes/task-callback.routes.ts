@@ -1,7 +1,8 @@
+import { timingSafeEqual } from 'node:crypto';
+
 import { Router } from 'express';
 
 import { UnauthorizedError } from '../errors/app-errors.js';
-
 
 import type { AgentService } from '../services/agent.service.js';
 import type { Logger } from '@listinglogic/logger';
@@ -22,13 +23,22 @@ export interface TaskCallbackDeps {
 
 const TASK_SECRET_HEADER = 'x-task-secret';
 
+/** Constant-time secret comparison — see scheduler.routes.ts for rationale. */
+function secretsMatch(provided: string | undefined, expected: string): boolean {
+  if (!provided) return false;
+  const providedBuf = Buffer.from(provided);
+  const expectedBuf = Buffer.from(expected);
+  if (providedBuf.length !== expectedBuf.length) return false;
+  return timingSafeEqual(providedBuf, expectedBuf);
+}
+
 export function createTaskCallbackRouter(deps: TaskCallbackDeps): Router {
   const router = Router();
   const secret = process.env.CLOUD_TASKS_SHARED_SECRET;
 
   router.use((req, _res, next) => {
     if (!secret) return next(new UnauthorizedError('Task callback not configured'));
-    if (req.header(TASK_SECRET_HEADER) !== secret) {
+    if (!secretsMatch(req.header(TASK_SECRET_HEADER), secret)) {
       deps.logger.warn('Task callback rejected', { ip: req.ip });
       return next(new UnauthorizedError('Invalid task secret'));
     }

@@ -1,3 +1,5 @@
+import { timingSafeEqual } from 'node:crypto';
+
 import { runAgentSweepSchema } from '@listinglogic/validators';
 import { Router } from 'express';
 
@@ -31,6 +33,19 @@ export interface SchedulerRouterDeps {
 
 const SCHEDULER_SECRET_HEADER = 'x-scheduler-secret';
 
+/**
+ * Constant-time secret comparison — avoids leaking secret length/prefix via
+ * response-time side channels (`===` on strings short-circuits at the first
+ * mismatched byte, so it's technically vulnerable to timing attacks).
+ */
+function secretsMatch(provided: string | undefined, expected: string): boolean {
+  if (!provided) return false;
+  const providedBuf = Buffer.from(provided);
+  const expectedBuf = Buffer.from(expected);
+  if (providedBuf.length !== expectedBuf.length) return false;
+  return timingSafeEqual(providedBuf, expectedBuf);
+}
+
 export function createSchedulerRouter(deps: SchedulerRouterDeps): Router {
   const router = Router();
   const secret = process.env.SCHEDULER_SHARED_SECRET;
@@ -40,7 +55,7 @@ export function createSchedulerRouter(deps: SchedulerRouterDeps): Router {
     if (!secret) {
       return next(new UnauthorizedError('Scheduler endpoints not configured'));
     }
-    if (req.header(SCHEDULER_SECRET_HEADER) !== secret) {
+    if (!secretsMatch(req.header(SCHEDULER_SECRET_HEADER), secret)) {
       deps.logger.warn('Scheduler request rejected', {
         ip: req.ip,
         headerPresent: Boolean(req.header(SCHEDULER_SECRET_HEADER)),

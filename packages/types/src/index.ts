@@ -13,3 +13,4 @@ export * from './automation.js';
 export * from './interaction.js';
 export * from './scoring.js';
 export * from './api.js';
+export * from './skip-trace.js';

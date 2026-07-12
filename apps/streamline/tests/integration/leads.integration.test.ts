@@ -56,6 +56,17 @@ const mockEventPublisher = {
   publish: vi.fn(),
 };
 
+const mockSkipTrace = {
+  lookup: vi.fn().mockResolvedValue({
+    status: 'not_configured',
+    provider: null,
+    confidence: 0,
+    phones: [],
+    emails: [],
+    tracedAt: new Date().toISOString(),
+  }),
+};
+
 function buildApp(): Application {
   return createApp({
     routers: [
@@ -66,6 +77,7 @@ function buildApp(): Application {
           scoringService: mockScoringService as never,
           agentService: mockAgentService as never,
           eventPublisher: mockEventPublisher as never,
+          skipTrace: mockSkipTrace as never,
         }),
       },
     ],
@@ -244,6 +256,42 @@ describe('Lead API — Integration', () => {
       expect(res.status).toBe(200);
       expect(res.body.data.composite).toBe(75);
       expect(res.body.data.recommendation).toBeTruthy();
+    });
+  });
+
+  describe('POST /api/leads/:id/skip-trace', () => {
+    it('returns not_configured status when no provider is configured, never fabricated data', async () => {
+      const res = await request(app)
+        .post(`/api/leads/${mockLead.id}/skip-trace`)
+        .set(makeAuthHeader());
+
+      expect(res.status).toBe(200);
+      expect(res.body.data.status).toBe('not_configured');
+      expect(res.body.data.phones).toEqual([]);
+      expect(res.body.data.emails).toEqual([]);
+    });
+
+    it('publishes a lead.updated event when a match is found', async () => {
+      mockSkipTrace.lookup.mockResolvedValueOnce({
+        status: 'found',
+        provider: 'batchdata',
+        confidence: 0.9,
+        phones: [{ number: '15555551234', type: 'mobile', isPrimary: true, dncListed: false }],
+        emails: [],
+        tracedAt: new Date().toISOString(),
+      });
+
+      const res = await request(app)
+        .post(`/api/leads/${mockLead.id}/skip-trace`)
+        .set(makeAuthHeader());
+
+      expect(res.status).toBe(200);
+      expect(res.body.data.status).toBe('found');
+      expect(mockEventPublisher.publish).toHaveBeenCalledWith(
+        'lead.updated',
+        TEST_OPERATOR_ID,
+        expect.objectContaining({ leadId: mockLead.id }),
+      );
     });
   });
 

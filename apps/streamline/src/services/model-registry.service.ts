@@ -65,7 +65,7 @@ export class ModelRegistryService {
     this.logger = logger.child({ service: 'model-registry' });
   }
 
-  public async getModel(operatorId: string): Promise<CachedModel | null> {
+  public getModel(operatorId: string): Promise<CachedModel | null> {
     const cached = this.cache.get(operatorId);
 
     if (!cached) {
@@ -79,7 +79,7 @@ export class ModelRegistryService {
       this.scheduleBackgroundRefresh(operatorId);
     }
 
-    return cached.model;
+    return Promise.resolve(cached.model);
   }
 
   public invalidate(operatorId: string): void {
@@ -124,7 +124,7 @@ export class ModelRegistryService {
     });
   }
 
-  private async loadAndCache(operatorId: string): Promise<CachedModel | null> {
+  private loadAndCache(operatorId: string): Promise<CachedModel | null> {
     const existing = this.inFlight.get(operatorId);
     if (existing) return existing;
 

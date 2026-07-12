@@ -14,6 +14,7 @@ import { stripUndefined } from '../utils/strip-undefined.js';
 import type { EventPublisherService } from '../realtime/event-publisher.service.js';
 import type { AgentService } from '../services/agent.service.js';
 import type { ScoringService } from '../services/scoring.service.js';
+import type { SkipTraceService } from '../services/skip-trace.service.js';
 import type { LeadRepository } from '@listinglogic/db';
 import type {
   ApiListResponse,
@@ -21,6 +22,7 @@ import type {
   Lead,
   LeadId,
   OperatorId,
+  SkipTraceResult,
 } from '@listinglogic/types';
 
 export interface LeadRouterDeps {
@@ -28,6 +30,7 @@ export interface LeadRouterDeps {
   readonly scoringService: ScoringService;
   readonly agentService: AgentService;
   readonly eventPublisher: EventPublisherService;
+  readonly skipTrace: SkipTraceService;
 }
 
 export function createLeadRouter(deps: LeadRouterDeps): Router {
@@ -175,6 +178,39 @@ export function createLeadRouter(deps: LeadRouterDeps): Router {
       void deps.agentService.evaluateLead(req.operatorId, leadId, 'lead_scored').catch(() => undefined);
 
       res.json({ data: score, requestId: req.requestId });
+    } catch (err) {
+      next(err);
+    }
+  });
+
+  /**
+   * Look up the property owner's current phone/email via a real skip-trace
+   * provider (BatchData). Returns an honest `status` field — never fabricated
+   * contact data — so the UI can distinguish "found", "not found",
+   * "provider not configured", and "provider temporarily unavailable".
+   */
+  router.post('/:id/skip-trace', async (req, res, next) => {
+    try {
+      const lead = await deps.leadRepo.findByIdOrThrow(req.operatorId, String(req.params.id));
+
+      const result: SkipTraceResult = await deps.skipTrace.lookup({
+        firstName: lead.contact.firstName,
+        lastName: lead.contact.lastName,
+        address: lead.property.address,
+        city: lead.property.city,
+        state: lead.property.state,
+        zip: lead.property.zip,
+      });
+
+      if (result.status === 'found') {
+        deps.eventPublisher.publish('lead.updated', req.operatorId, {
+          leadId: lead.id,
+          changedFields: ['skipTrace'],
+        });
+      }
+
+      const body: ApiResponse<SkipTraceResult> = { data: result, requestId: req.requestId };
+      res.json(body);
     } catch (err) {
       next(err);
     }

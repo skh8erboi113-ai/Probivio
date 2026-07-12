@@ -1,82 +1,112 @@
+import { SkipTraceStatus } from '@listinglogic/types';
 
 import { loadConfig } from '../config/config.js';
-import { ExternalApiError, InternalError } from '../errors/app-errors.js';
+import { ExternalApiError } from '../errors/app-errors.js';
 
 import { CircuitBreaker } from './circuit-breaker.js';
 import { RetryPredicates, retryWithBackoff } from './retry.js';
 
 import type { Logger } from '@listinglogic/logger';
+import type { SkipTraceInput, SkipTraceResult, SkipTracePhone } from '@listinglogic/types';
 
 /**
- * Skip trace service — 3-tier fallback chain per whitepaper spec.
+ * Skip trace service — real provider integration (BatchData property skip
+ * trace API: https://developer.batchdata.com), not simulated data.
  *
- * Primary: TLOxp / LexisNexis (highest quality, most expensive)
- * Secondary: BeenVerified (mid-tier)
- * Tertiary: Free public records scraper (last resort, lowest confidence)
- *
- * Each tier has its own circuit breaker so a single provider outage doesn't
- * cascade. Results are normalized to a common shape.
+ * Earlier versions of this service returned fabricated phone numbers/emails
+ * whenever skip trace was invoked, which is unacceptable for a product that
+ * hands this data to a real operator who will call/text/email a real person.
+ * If no provider is configured, or the provider call fails, this service now
+ * says so explicitly via `SkipTraceResult.status` — it never invents contact
+ * info. The frontend is responsible for surfacing that status honestly
+ * (see SkipTraceCard in LeadDetailPage) instead of presenting a "result" as
+ * if it were verified data.
  */
 
-export interface SkipTraceInput {
-  readonly firstName: string;
-  readonly lastName: string;
-  readonly address?: string;
-  readonly city?: string;
-  readonly state?: string;
-  readonly zip?: string;
-}
+const PROVIDER_NAME = 'batchdata';
+const BATCHDATA_ENDPOINT = 'https://api.batchdata.com/api/v1/property/skip-trace';
 
-export interface SkipTraceResult {
-  readonly source: 'primary' | 'secondary' | 'tertiary' | 'none';
-  readonly confidence: number;
-  readonly phones: readonly SkipTracePhone[];
-  readonly emails: readonly string[];
-  readonly addresses: readonly string[];
-  readonly age?: number;
-  readonly relatives: readonly string[];
-}
-
-export interface SkipTracePhone {
+interface BatchDataPhone {
   readonly number: string;
-  readonly type: 'mobile' | 'landline' | 'voip' | 'unknown';
-  readonly isPrimary: boolean;
-  readonly dncListed: boolean;
+  readonly type?: string;
+  readonly reachable?: boolean;
+  readonly score?: string | number;
 }
 
-const EMPTY_RESULT: SkipTraceResult = {
-  source: 'none',
-  confidence: 0,
-  phones: [],
-  emails: [],
-  addresses: [],
-  relatives: [],
-};
+interface BatchDataPerson {
+  readonly emails?: readonly { readonly email: string }[];
+  readonly phoneNumbers?: readonly BatchDataPhone[];
+  readonly dnc?: { readonly landline?: boolean; readonly mobile?: boolean };
+  readonly mailingAddress?: { readonly street?: string; readonly city?: string; readonly state?: string; readonly zip?: string };
+  readonly meta?: { readonly matched?: boolean };
+}
+
+interface BatchDataResponse {
+  readonly results?: {
+    readonly persons?: readonly BatchDataPerson[];
+  };
+}
+
+function notConfigured(): SkipTraceResult {
+  return {
+    status: SkipTraceStatus.NOT_CONFIGURED,
+    provider: null,
+    confidence: 0,
+    phones: [],
+    emails: [],
+    tracedAt: new Date().toISOString(),
+  };
+}
+
+function notFound(provider: string): SkipTraceResult {
+  return {
+    status: SkipTraceStatus.NOT_FOUND,
+    provider,
+    confidence: 0,
+    phones: [],
+    emails: [],
+    tracedAt: new Date().toISOString(),
+  };
+}
+
+function unavailable(provider: string): SkipTraceResult {
+  return {
+    status: SkipTraceStatus.UNAVAILABLE,
+    provider,
+    confidence: 0,
+    phones: [],
+    emails: [],
+    tracedAt: new Date().toISOString(),
+  };
+}
+
+function normalizePhoneType(raw: string | undefined): SkipTracePhone['type'] {
+  const t = (raw ?? '').toLowerCase();
+  if (t.includes('mobile') || t.includes('wireless')) return 'mobile';
+  if (t.includes('land')) return 'landline';
+  if (t.includes('voip')) return 'voip';
+  return 'unknown';
+}
 
 export class SkipTraceService {
-  private readonly primaryCircuit: CircuitBreaker;
-  private readonly secondaryCircuit: CircuitBreaker;
-  private readonly tertiaryCircuit: CircuitBreaker;
+  private readonly circuit: CircuitBreaker;
   private readonly apiKey: string | null;
   private readonly logger: Logger;
   private readonly enabled: boolean;
 
   constructor(logger: Logger) {
     const config = loadConfig();
-    this.logger = logger.child({ service: 'skip-trace' });
+    this.logger = logger.child({ service: 'skip-trace', provider: PROVIDER_NAME });
     this.enabled = config.integrations.skipTrace.enabled;
     this.apiKey = config.integrations.skipTrace.apiKey ?? null;
 
-    const circuitOpts = {
+    this.circuit = new CircuitBreaker({
+      serviceName: 'skip-trace-batchdata',
       failureThreshold: 5,
       resetTimeoutMs: 60_000,
       halfOpenRequests: 1,
       logger: this.logger,
-    };
-
-    this.primaryCircuit = new CircuitBreaker({ ...circuitOpts, serviceName: 'skip-trace-primary' });
-    this.secondaryCircuit = new CircuitBreaker({ ...circuitOpts, serviceName: 'skip-trace-secondary' });
-    this.tertiaryCircuit = new CircuitBreaker({ ...circuitOpts, serviceName: 'skip-trace-tertiary' });
+    });
   }
 
   public isEnabled(): boolean {
@@ -85,130 +115,118 @@ export class SkipTraceService {
 
   public async lookup(input: SkipTraceInput): Promise<SkipTraceResult> {
     if (!this.enabled || !this.apiKey) {
-      this.logger.debug('Skip trace disabled — returning empty');
-      return EMPTY_RESULT;
+      this.logger.debug('Skip trace not configured — no API key present');
+      return notConfigured();
     }
 
-    // Try primary
     try {
-      const primary = await this.primaryCircuit.execute(() =>
-        retryWithBackoff(() => this.callPrimary(input), {
+      return await this.circuit.execute(() =>
+        retryWithBackoff(() => this.callBatchData(input), {
           maxAttempts: 2,
           initialDelayMs: 500,
           isRetryable: RetryPredicates.networkOrServerError,
           logger: this.logger,
-          operationName: 'skip-trace.primary',
-        }),
-      );
-      if (primary.confidence >= 0.7) return primary;
-    } catch (err) {
-      this.logger.warn('Skip trace primary failed', {
-        error: err instanceof Error ? err.message : String(err),
-      });
-    }
-
-    // Fall through to secondary
-    try {
-      const secondary = await this.secondaryCircuit.execute(() =>
-        retryWithBackoff(() => this.callSecondary(input), {
-          maxAttempts: 2,
-          initialDelayMs: 500,
-          isRetryable: RetryPredicates.networkOrServerError,
-          logger: this.logger,
-          operationName: 'skip-trace.secondary',
-        }),
-      );
-      if (secondary.confidence >= 0.5) return secondary;
-    } catch (err) {
-      this.logger.warn('Skip trace secondary failed', {
-        error: err instanceof Error ? err.message : String(err),
-      });
-    }
-
-    // Fall through to tertiary
-    try {
-      return await this.tertiaryCircuit.execute(() =>
-        retryWithBackoff(() => this.callTertiary(input), {
-          maxAttempts: 1,
-          initialDelayMs: 0,
-          isRetryable: () => false,
-          logger: this.logger,
-          operationName: 'skip-trace.tertiary',
+          operationName: 'skip-trace.batchdata',
         }),
       );
     } catch (err) {
-      this.logger.warn('All skip trace tiers exhausted', {
+      this.logger.warn('Skip trace provider call failed — returning unavailable, never fabricated data', {
         error: err instanceof Error ? err.message : String(err),
       });
-      return EMPTY_RESULT;
+      return unavailable(PROVIDER_NAME);
     }
   }
 
-  // eslint-disable-next-line require-await, @typescript-eslint/require-await -- simulated placeholder; will call `httpCall` (async) once a real provider is wired in
-  private async callPrimary(input: SkipTraceInput): Promise<SkipTraceResult> {
-    // Placeholder for TLOxp / LexisNexis integration.
-    // Replace with real API call when credentials are provisioned.
-    if (!this.apiKey) throw new InternalError('Skip trace API key missing', undefined, true);
+  private async callBatchData(input: SkipTraceInput): Promise<SkipTraceResult> {
+    if (!input.address || !input.city || !input.state || !input.zip) {
+      // BatchData requires a full property address (street+city+state or
+      // street+zip at minimum). Without one we can't call the provider at
+      // all — this is a "not found" outcome, not a provider failure.
+      return notFound(PROVIDER_NAME);
+    }
 
-    // Simulated response shape — swap for real client
-    const simulated: SkipTraceResult = {
-      source: 'primary',
-      confidence: 0.85,
-      phones: [
-        { number: `+1555${Math.floor(Math.random() * 10000000)}`, type: 'mobile', isPrimary: true, dncListed: false },
+    const body = {
+      requests: [
+        {
+          propertyAddress: {
+            street: input.address,
+            city: input.city,
+            state: input.state,
+            zip: input.zip,
+          },
+          ...(input.firstName || input.lastName
+            ? { name: { first: input.firstName, last: input.lastName } }
+            : {}),
+        },
       ],
-      emails: [`${input.firstName.toLowerCase()}.${input.lastName.toLowerCase()}@example.com`],
-      addresses: input.address ? [input.address] : [],
-      relatives: [],
     };
-    return simulated;
-  }
 
-  // eslint-disable-next-line require-await, @typescript-eslint/require-await -- simulated placeholder; will call a real provider API once wired in
-  private async callSecondary(input: SkipTraceInput): Promise<SkipTraceResult> {
-    // Placeholder for BeenVerified / Whitepages Pro
-    return {
-      source: 'secondary',
-      confidence: 0.6,
-      phones: [],
-      emails: [],
-      addresses: input.address ? [input.address] : [],
-      relatives: [],
-    };
-  }
-
-  // eslint-disable-next-line require-await, @typescript-eslint/require-await -- simulated placeholder; will call a real provider API once wired in
-  private async callTertiary(_input: SkipTraceInput): Promise<SkipTraceResult> {
-    // Public records fallback — very low confidence
-    return { ...EMPTY_RESULT, source: 'tertiary', confidence: 0.2 };
-  }
-
-  /**
-   * Shared HTTP helper for wiring in a real skip-trace provider (TLOxp,
-   * LexisNexis, BeenVerified, etc). `callPrimary`/`callSecondary` are
-   * simulated placeholders today — swap their bodies to call this method
-   * once real credentials and an API contract are available.
-   */
-  protected async httpCall<T>(url: string, body: unknown): Promise<T> {
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), 10_000);
 
+    let res: Response;
     try {
-      const res = await fetch(url, {
+      res = await fetch(BATCHDATA_ENDPOINT, {
         method: 'POST',
         signal: controller.signal,
         headers: {
           'Content-Type': 'application/json',
+          Accept: 'application/json',
           Authorization: `Bearer ${this.apiKey}`,
         },
         body: JSON.stringify(body),
       });
-
-      if (!res.ok) throw new ExternalApiError('skip-trace', `HTTP ${res.status}`);
-      return (await res.json()) as T;
     } finally {
       clearTimeout(timeoutId);
     }
+
+    if (!res.ok) {
+      throw new ExternalApiError(PROVIDER_NAME, `HTTP ${res.status}`);
+    }
+
+    const json = (await res.json()) as BatchDataResponse;
+    const person = json.results?.persons?.[0];
+
+    if (!person || person.meta?.matched === false) {
+      return notFound(PROVIDER_NAME);
+    }
+
+    const phones: SkipTracePhone[] = (person.phoneNumbers ?? []).map((p, idx) => ({
+      number: p.number,
+      type: normalizePhoneType(p.type),
+      isPrimary: idx === 0,
+      dncListed: Boolean(person.dnc?.mobile || person.dnc?.landline),
+    }));
+    const emails = (person.emails ?? []).map((e) => e.email);
+
+    const mailingAddress = person.mailingAddress
+      ? [person.mailingAddress.street, person.mailingAddress.city, person.mailingAddress.state, person.mailingAddress.zip]
+          .filter(Boolean)
+          .join(', ')
+      : undefined;
+
+    if (phones.length === 0 && emails.length === 0) {
+      return notFound(PROVIDER_NAME);
+    }
+
+    // Confidence heuristic: provider gives a per-phone reachability score
+    // (0-100); use the best phone score if present, otherwise a flat value
+    // reflecting "matched, but no reachability signal available".
+    const bestScore = Math.max(
+      0,
+      ...(person.phoneNumbers ?? []).map((p) => (typeof p.score === 'string' ? Number(p.score) : (p.score ?? 0))),
+    );
+    const confidence = bestScore > 0 ? Math.min(1, bestScore / 100) : 0.5;
+
+    return {
+      status: SkipTraceStatus.FOUND,
+      provider: PROVIDER_NAME,
+      confidence,
+      phones,
+      emails,
+      ...(mailingAddress && { mailingAddress }),
+      tracedAt: new Date().toISOString(),
+    };
   }
 }
 

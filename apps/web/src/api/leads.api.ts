@@ -4,6 +4,7 @@ import type {
   Lead,
   LeadFilters,
   ScoreResult,
+  SkipTraceResult,
 } from '@listinglogic/types';
 import type { CreateLeadPayload, UpdateLeadPayload } from '@listinglogic/validators';
 
@@ -43,5 +44,9 @@ export const leadsApi = {
 
   hot() {
     return api.get<ApiListResponse<Lead>>('/api/leads/dashboard/hot');
+  },
+
+  skipTrace(id: string) {
+    return api.post<ApiResponse<SkipTraceResult>>(`/api/leads/${id}/skip-trace`, {});
   },
 };

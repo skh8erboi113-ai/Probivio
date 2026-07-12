@@ -1,6 +1,7 @@
+import { useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 
-import type { BuyerMatch, Interaction } from '@listinglogic/types';
+import type { BuyerMatch, Interaction, Lead, SkipTraceResult } from '@listinglogic/types';
 
 import { Badge } from '../components/ui/Badge';
 import { Button } from '../components/ui/Button';
@@ -9,7 +10,7 @@ import { useToast } from '../context/ToastContext';
 import { useEvaluateLeadNow, useLeadAgentDecisions } from '../hooks/useAgent';
 import { useBuyerMatches } from '../hooks/useBuyers';
 import { useLeadInteractions } from '../hooks/useInteractions';
-import { useLead, useScoreLead } from '../hooks/useLeads';
+import { useLead, useScoreLead, useSkipTrace } from '../hooks/useLeads';
 import { fonts, palette, spacing } from '../theme';
 
 const ACTION_LABELS: Record<string, string> = {
@@ -29,6 +30,8 @@ export function LeadDetailPage() {
   const { data: decisions } = useLeadAgentDecisions(id);
   const scoreLead = useScoreLead();
   const evaluateNow = useEvaluateLeadNow();
+  const skipTrace = useSkipTrace();
+  const [skipTraceResult, setSkipTraceResult] = useState<SkipTraceResult | null>(null);
   const { notify } = useToast();
 
   if (isLoading || !data) return <div style={{ color: palette.textMuted }}>Loading…</div>;
@@ -50,6 +53,24 @@ export function LeadDetailPage() {
       notify(result.data.executed ? 'success' : 'info', `Gemini: ${action}`);
     } catch (err) {
       notify('error', err instanceof Error ? err.message : 'Agent evaluation failed');
+    }
+  }
+
+  async function handleSkipTrace() {
+    try {
+      const result = await skipTrace.mutateAsync(id!);
+      setSkipTraceResult(result.data);
+      if (result.data.status === 'found') {
+        notify('success', 'Skip trace found new contact info');
+      } else if (result.data.status === 'not_configured') {
+        notify('info', 'Skip trace provider not configured for this environment');
+      } else if (result.data.status === 'not_found') {
+        notify('info', 'No match found for this owner');
+      } else {
+        notify('error', 'Skip trace provider temporarily unavailable — try again later');
+      }
+    } catch (err) {
+      notify('error', err instanceof Error ? err.message : 'Skip trace failed');
     }
   }
 
@@ -134,6 +155,13 @@ export function LeadDetailPage() {
               </div>
             )}
           </Card>
+
+          <SkipTraceCard
+            lead={lead}
+            result={skipTraceResult}
+            onLookup={handleSkipTrace}
+            isPending={skipTrace.isPending}
+          />
         </div>
 
         <div style={{ display: 'flex', flexDirection: 'column', gap: spacing.lg }}>
@@ -225,6 +253,105 @@ function SectionTitle({ children }: { readonly children: React.ReactNode }) {
     >
       {children}
     </div>
+  );
+}
+
+const SKIP_TRACE_STATUS_LABEL: Record<SkipTraceResult['status'], string> = {
+  found: 'Found',
+  not_found: 'No match found',
+  not_configured: 'Provider not configured',
+  unavailable: 'Provider unavailable',
+};
+
+const SKIP_TRACE_STATUS_COLOR: Record<SkipTraceResult['status'], keyof typeof palette> = {
+  found: 'green',
+  not_found: 'textMuted',
+  not_configured: 'textMuted',
+  unavailable: 'red',
+};
+
+interface SkipTraceCardProps {
+  readonly lead: Lead;
+  readonly result: SkipTraceResult | null;
+  readonly onLookup: () => void;
+  readonly isPending: boolean;
+}
+
+/**
+ * Shows the outcome of a real skip-trace provider call, honestly. Unlike a
+ * mock/demo integration, this never displays fabricated phone numbers or
+ * emails — a `not_configured` or `unavailable` status is rendered plainly
+ * as such instead of hiding behind a fake "found" result.
+ */
+function SkipTraceCard({ lead, result, onLookup, isPending }: SkipTraceCardProps) {
+  const hasContact = Boolean(lead.contact.phone || lead.contact.email);
+
+  return (
+    <Card accent="blue">
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: spacing.md }}>
+        <SectionTitle>
+          <span style={{ marginBottom: 0 }}>Skip trace</span>
+        </SectionTitle>
+        <Button
+          variant="secondary"
+          size="sm"
+          onClick={onLookup}
+          loading={isPending}
+          aria-label="Look up owner contact info via skip trace"
+        >
+          {hasContact ? 'Re-trace' : 'Trace owner'}
+        </Button>
+      </div>
+
+      {!result ? (
+        <div style={{ color: palette.textMuted, fontSize: 13 }}>
+          {hasContact
+            ? 'Contact info on file. Run a trace to verify or find additional numbers/emails.'
+            : 'No contact info on file yet. Run a trace to look up the property owner.'}
+        </div>
+      ) : (
+        <div role="status" aria-live="polite">
+          <Badge color={SKIP_TRACE_STATUS_COLOR[result.status]}>
+            {SKIP_TRACE_STATUS_LABEL[result.status]}
+          </Badge>
+
+          {result.status === 'not_configured' && (
+            <div style={{ color: palette.textMuted, fontSize: 12, marginTop: spacing.sm, lineHeight: 1.6 }}>
+              No skip-trace provider API key is set for this environment (SKIP_TRACE_API_KEY). This is not
+              simulated data — configure a provider to enable real lookups.
+            </div>
+          )}
+          {result.status === 'unavailable' && (
+            <div style={{ color: palette.textMuted, fontSize: 12, marginTop: spacing.sm, lineHeight: 1.6 }}>
+              The skip-trace provider ({result.provider ?? 'unknown'}) call failed or timed out. Try again in a
+              minute.
+            </div>
+          )}
+          {result.status === 'not_found' && (
+            <div style={{ color: palette.textMuted, fontSize: 12, marginTop: spacing.sm, lineHeight: 1.6 }}>
+              No public record match for this owner/address via {result.provider ?? 'the provider'}.
+            </div>
+          )}
+          {result.status === 'found' && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginTop: spacing.sm }}>
+              {result.phones.map((p) => (
+                <div key={p.number} style={{ fontFamily: fonts.mono, fontSize: 12, display: 'flex', gap: 8, alignItems: 'center' }}>
+                  <span>{p.number}</span>
+                  <Badge color="accent">{p.type}</Badge>
+                  {p.dncListed && <Badge color="red">DNC</Badge>}
+                </div>
+              ))}
+              {result.emails.map((e) => (
+                <div key={e} style={{ fontFamily: fonts.mono, fontSize: 12 }}>{e}</div>
+              ))}
+              <div style={{ fontSize: 11, color: palette.textDim, marginTop: 4 }}>
+                Source: {result.provider} · confidence {Math.round(result.confidence * 100)}%
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+    </Card>
   );
 }
 

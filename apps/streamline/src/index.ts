@@ -52,6 +52,7 @@ async function main(): Promise<void> {
         scoringService: container.scoringService,
         agentService: container.agentService,
         eventPublisher: container.eventPublisher,
+        skipTrace: container.skipTrace,
       }),
     },
     {

@@ -72,7 +72,7 @@ export class InProcessPubSub implements PubSubTransport {
     return () => this.emitter.off(channel, handler);
   }
 
-  // eslint-disable-next-line @typescript-eslint/require-await -- interface parity with RedisPubSub, nothing to await here
+  // eslint-disable-next-line require-await, @typescript-eslint/require-await -- interface parity with RedisPubSub, nothing to await here
   public async shutdown(): Promise<void> {
     this.emitter.removeAllListeners();
   }
@@ -154,7 +154,7 @@ export class RedisPubSub implements PubSubTransport {
     if (this.patternSubscribed) return;
     this.patternSubscribed = true;
 
-    this.subscriber.psubscribe(`${CHANNEL_PREFIX}*`, (err) => {
+    void this.subscriber.psubscribe(`${CHANNEL_PREFIX}*`, (err) => {
       if (err) this.logger.error('Redis psubscribe failed', { error: err.message });
     });
 

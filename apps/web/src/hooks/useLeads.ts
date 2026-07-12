@@ -99,4 +99,10 @@ export function useScoreLead() {
       void qc.invalidateQueries({ queryKey: leadKeys.hot() });
     },
   });
-    }
+}
+
+export function useSkipTrace() {
+  return useMutation({
+    mutationFn: (id: string) => leadsApi.skipTrace(id),
+  });
+}
