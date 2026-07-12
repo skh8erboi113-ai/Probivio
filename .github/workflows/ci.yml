@@ -140,5 +140,5 @@ jobs:
         run: pnpm build
         continue-on-error: true
         
-        - name: Codecov
-        uses: codecov/codecov-action@v7.
+        
+        
