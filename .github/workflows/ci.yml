@@ -139,3 +139,5 @@ jobs:
       - name: Build all
         run: pnpm build
         continue-on-error: true
+- name: Codecov
+  uses: codecov/codecov-action@v7.0.0
