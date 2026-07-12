@@ -401,7 +401,7 @@ export class AgentService {
       action: input.action,
       reasoning: input.reasoning,
       executed: input.executed,
-      modelVersion: 'gemini-1.5-flash',
+      modelVersion: 'gemini-2.5-flash',
       ...(input.confidence !== undefined && { confidence: input.confidence }),
       ...(input.alternativesConsidered && input.alternativesConsidered.length > 0
         ? { alternativesConsidered: input.alternativesConsidered }

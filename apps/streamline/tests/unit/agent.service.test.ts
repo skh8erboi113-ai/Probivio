@@ -184,7 +184,7 @@ describe('AgentService — counterfactual reasoning + confidence-gated autonomy'
         reasoning: 'test',
         executed: false,
         pendingApproval: true,
-        modelVersion: 'gemini-1.5-flash',
+        modelVersion: 'gemini-2.5-flash',
       });
       deps.decisionLogRepo.resolveApproval.mockResolvedValue({ id: 'decision_1', executed: true });
 
@@ -205,7 +205,7 @@ describe('AgentService — counterfactual reasoning + confidence-gated autonomy'
         reasoning: 'test',
         executed: false,
         pendingApproval: true,
-        modelVersion: 'gemini-1.5-flash',
+        modelVersion: 'gemini-2.5-flash',
       });
       deps.decisionLogRepo.resolveApproval.mockResolvedValue({ id: 'decision_1', executed: false });
 
@@ -226,7 +226,7 @@ describe('AgentService — counterfactual reasoning + confidence-gated autonomy'
         reasoning: 'test',
         executed: true,
         pendingApproval: false,
-        modelVersion: 'gemini-1.5-flash',
+        modelVersion: 'gemini-2.5-flash',
       });
 
       await expect(service.resolveApproval(OPERATOR_ID, 'decision_1', true)).rejects.toThrow(/not awaiting approval/);

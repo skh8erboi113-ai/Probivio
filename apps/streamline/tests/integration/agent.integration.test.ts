@@ -17,7 +17,7 @@ const mockDecision = {
   alternativesConsidered: [{ action: 'send_email', reasonRejected: 'already emailed today' }],
   executed: false,
   pendingApproval: true,
-  modelVersion: 'gemini-1.5-flash',
+  modelVersion: 'gemini-2.5-flash',
   createdAt: new Date().toISOString(),
   updatedAt: new Date().toISOString(),
 };

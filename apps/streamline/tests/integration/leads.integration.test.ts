@@ -73,7 +73,7 @@ const mockAgentService = {
     action: { type: 'no_action' },
     reasoning: 'test',
     executed: true,
-    modelVersion: 'gemini-1.5-flash',
+    modelVersion: 'gemini-2.5-flash',
   }),
 };
 

@@ -17,7 +17,9 @@ import type { AgentTrigger, InteractionFeatures, Lead, ProbateExtractionResult }
  *   - Prompt injection defense (input sanitization + system instructions)
  *   - Structured JSON output validation
  *
- * Model: gemini-1.5-flash (per whitepaper spec)
+ * Model: gemini-2.5-flash (gemini-1.5-flash was retired by Google; migrated
+ * to the current fast/cheap tier model in the 2.5 family — same tradeoffs,
+ * same JSON-mode + structured-output behavior this service depends on)
  */
 
 interface GeminiPromptInput {
@@ -49,7 +51,7 @@ export class GeminiService {
     if (this.enabled && config.integrations.gemini.apiKey) {
       const genAI = new GoogleGenerativeAI(config.integrations.gemini.apiKey);
       this.model = genAI.getGenerativeModel({
-        model: 'gemini-1.5-flash',
+        model: 'gemini-2.5-flash',
         generationConfig: {
           responseMimeType: 'application/json',
           temperature: 0.2,
