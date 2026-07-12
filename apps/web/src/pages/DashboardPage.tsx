@@ -24,7 +24,11 @@ export function DashboardPage() {
         </h1>
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: spacing.md }}>
+      <div
+        role="list"
+        aria-label="Key metrics"
+        style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: spacing.md }}
+      >
         <StatCard label="Hot leads" value={data?.data.length ?? 0} color="accent" />
         <StatCard label="Total tracked" value={data?.pagination.total ?? 0} color="blue" />
         <StatCard label="Avg score" value="—" color="green" />
@@ -36,12 +40,17 @@ export function DashboardPage() {
           Hot leads
         </h2>
         {isLoading ? (
-          <div style={{ color: palette.textMuted }}>Loading…</div>
+          <div style={{ color: palette.textMuted }} role="status" aria-live="polite">
+            Loading…
+          </div>
+        ) : (data?.data ?? []).length === 0 ? (
+          <div style={{ color: palette.textMuted, fontSize: 13 }}>No hot leads right now</div>
         ) : (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+          <div role="list" aria-label="Hot leads" style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
             {(data?.data ?? []).map((lead) => (
               <div
                 key={lead.id}
+                role="listitem"
                 style={{
                   display: 'grid',
                   gridTemplateColumns: '1fr auto auto',
@@ -59,7 +68,7 @@ export function DashboardPage() {
                     {lead.property.address}, {lead.property.city} {lead.property.state}
                   </div>
                 </div>
-                <div style={{ fontSize: 20, fontWeight: 700, color: palette.accent }}>
+                <div style={{ fontSize: 20, fontWeight: 700, color: palette.accent }} aria-label={`Score ${lead.score ?? 'not scored'}`}>
                   {lead.score ?? '—'}
                 </div>
                 <div style={{ fontSize: 11, color: palette.textDim, fontFamily: fonts.mono }}>
@@ -84,29 +93,32 @@ function StatCard({
   readonly color: 'accent' | 'blue' | 'green' | 'purple';
 }) {
   return (
-    <Card accent={color}>
-      <div
-        style={{
-          fontSize: 11,
-          letterSpacing: '0.1em',
-          color: palette.textMuted,
-          textTransform: 'uppercase',
-          fontFamily: fonts.mono,
-        }}
-      >
-        {label}
-      </div>
-      <div
-        style={{
-          fontSize: 32,
-          fontWeight: 700,
-          fontFamily: fonts.display,
-          color: palette[color],
-          marginTop: spacing.sm,
-        }}
-      >
-        {value}
-      </div>
-    </Card>
+    <div role="listitem">
+      <Card accent={color}>
+        <div
+          style={{
+            fontSize: 11,
+            letterSpacing: '0.1em',
+            color: palette.textMuted,
+            textTransform: 'uppercase',
+            fontFamily: fonts.mono,
+          }}
+        >
+          {label}
+        </div>
+        <div
+          aria-label={`${label}: ${value}`}
+          style={{
+            fontSize: 32,
+            fontWeight: 700,
+            fontFamily: fonts.display,
+            color: palette[color],
+            marginTop: spacing.sm,
+          }}
+        >
+          {value}
+        </div>
+      </Card>
+    </div>
   );
         }

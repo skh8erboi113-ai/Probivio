@@ -170,10 +170,15 @@ export function LeadFormPage() {
           </Section>
 
           <Section title="Notes">
+            <label htmlFor="lead-notes" style={{ display: 'none' }}>
+              Notes
+            </label>
             <textarea
+              id="lead-notes"
               name="notes"
               defaultValue={lead?.notes}
               rows={4}
+              aria-label="Notes"
               style={{
                 background: palette.surface,
                 border: `1px solid ${palette.border}`,
@@ -183,6 +188,7 @@ export function LeadFormPage() {
                 fontFamily: fonts.sans,
                 fontSize: 14,
                 resize: 'vertical',
+                width: '100%',
               }}
             />
           </Section>
@@ -203,8 +209,8 @@ export function LeadFormPage() {
 
 function Section({ title, children }: { readonly title: string; readonly children: React.ReactNode }) {
   return (
-    <div>
-      <div
+    <fieldset style={{ border: 'none', padding: 0, margin: 0 }}>
+      <legend
         style={{
           fontSize: 10,
           color: palette.accent,
@@ -212,12 +218,13 @@ function Section({ title, children }: { readonly title: string; readonly childre
           textTransform: 'uppercase',
           letterSpacing: '0.15em',
           marginBottom: spacing.sm,
+          padding: 0,
         }}
       >
         {title}
-      </div>
+      </legend>
       {children}
-    </div>
+    </fieldset>
   );
 }
 

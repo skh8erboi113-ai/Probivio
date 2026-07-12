@@ -77,11 +77,13 @@ export function LoginPage() {
 
             <form
               onSubmit={handleSubmit}
+              aria-label={mode === 'signin' ? 'Sign in' : 'Create account'}
               style={{ display: 'flex', flexDirection: 'column', gap: spacing.md }}
             >
               <Input
                 label="Email"
                 type="email"
+                autoComplete="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 required
@@ -89,13 +91,15 @@ export function LoginPage() {
               <Input
                 label="Password"
                 type="password"
+                autoComplete={mode === 'signin' ? 'current-password' : 'new-password'}
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 required
                 minLength={8}
+                {...(mode === 'signup' ? { hint: 'At least 8 characters' } : {})}
               />
 
-              <Button type="submit" loading={submitting}>
+              <Button type="submit" loading={submitting} aria-label={submitting ? 'Submitting…' : undefined}>
                 {mode === 'signin' ? 'Sign in' : 'Create account'}
               </Button>
             </form>

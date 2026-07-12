@@ -42,6 +42,7 @@ export function Button({
     <button
       {...rest}
       disabled={isDisabled}
+      aria-busy={loading || undefined}
       style={{
         background: v.bg,
         color: v.fg,

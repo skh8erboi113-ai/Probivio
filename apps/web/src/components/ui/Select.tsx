@@ -1,4 +1,4 @@
-import { forwardRef, type SelectHTMLAttributes } from 'react';
+import { forwardRef, useId, type SelectHTMLAttributes } from 'react';
 
 import { fonts, palette, radii, spacing } from '../../theme';
 
@@ -14,13 +14,18 @@ interface Props extends SelectHTMLAttributes<HTMLSelectElement> {
 }
 
 export const Select = forwardRef<HTMLSelectElement, Props>(function Select(
-  { label, options, error, style, ...rest },
+  { label, options, error, style, id, ...rest },
   ref,
 ) {
+  const generatedId = useId();
+  const selectId = id ?? generatedId;
+  const errorId = error ? `${selectId}-error` : undefined;
+
   return (
-    <label style={{ display: 'flex', flexDirection: 'column', gap: spacing.xs }}>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: spacing.xs }}>
       {label ? (
-        <span
+        <label
+          htmlFor={selectId}
           style={{
             fontSize: 11,
             color: palette.textMuted,
@@ -30,12 +35,15 @@ export const Select = forwardRef<HTMLSelectElement, Props>(function Select(
           }}
         >
           {label}
-        </span>
+        </label>
       ) : null}
 
       <select
         {...rest}
+        id={selectId}
         ref={ref}
+        aria-invalid={error ? true : undefined}
+        aria-describedby={errorId}
         style={{
           background: palette.surface,
           border: `1px solid ${error ? palette.red : palette.border}`,
@@ -57,8 +65,10 @@ export const Select = forwardRef<HTMLSelectElement, Props>(function Select(
       </select>
 
       {error ? (
-        <span style={{ fontSize: 11, color: palette.red, fontFamily: fonts.mono }}>{error}</span>
+        <span id={errorId} role="alert" style={{ fontSize: 11, color: palette.red, fontFamily: fonts.mono }}>
+          {error}
+        </span>
       ) : null}
-    </label>
+    </div>
   );
 });

@@ -29,6 +29,7 @@ export function Layout() {
       }}
     >
       <aside
+        aria-label="Main navigation"
         style={{
           background: palette.surface,
           borderRight: `1px solid ${palette.border}`,
@@ -40,6 +41,7 @@ export function Layout() {
       >
         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
           <div
+            aria-hidden="true"
             style={{
               width: 36,
               height: 36,
@@ -54,7 +56,7 @@ export function Layout() {
           </div>
           <div>
             <div style={{ fontFamily: fonts.display, fontWeight: 700, fontSize: 16 }}>
-              ListingLogic
+              Probivio
             </div>
             <div style={{ fontSize: 10, color: palette.textMuted, fontFamily: fonts.mono }}>
               v2.1
@@ -64,7 +66,7 @@ export function Layout() {
 
         <RealtimeIndicator />
 
-        <nav style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+        <nav aria-label="Primary" style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
           {navItems.map((item) => (
             <NavLink
               key={item.to}
@@ -95,7 +97,7 @@ export function Layout() {
         </div>
       </aside>
 
-      <main style={{ padding: spacing.xl, overflowY: 'auto' }}>
+      <main id="main-content" style={{ padding: spacing.xl, overflowY: 'auto' }}>
         <Outlet />
       </main>
     </div>

@@ -125,7 +125,7 @@ export function ScoreDrillDownCard({ leadId }: Props) {
 
 function SectionTitle({ children }: { readonly children: React.ReactNode }) {
   return (
-    <div
+    <h2
       style={{
         fontSize: 10,
         color: palette.accent,
@@ -133,9 +133,11 @@ function SectionTitle({ children }: { readonly children: React.ReactNode }) {
         textTransform: 'uppercase',
         letterSpacing: '0.15em',
         marginBottom: spacing.md,
+        marginTop: 0,
+        fontWeight: 600,
       }}
     >
       {children}
-    </div>
+    </h2>
   );
 }

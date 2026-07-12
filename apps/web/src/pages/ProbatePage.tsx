@@ -45,6 +45,7 @@ export function ProbatePage() {
           </p>
 
           <label
+            htmlFor="probate-file-upload"
             style={{
               display: 'inline-flex',
               alignItems: 'center',
@@ -52,14 +53,24 @@ export function ProbatePage() {
               padding: spacing.lg,
               border: `2px dashed ${palette.border}`,
               borderRadius: 12,
-              cursor: 'pointer',
+              cursor: uploading ? 'not-allowed' : 'pointer',
               color: palette.textMuted,
               fontFamily: fonts.mono,
               fontSize: 13,
             }}
           >
-            {uploading ? 'Scanning…' : 'Click to select PDF'}
-            <input type="file" accept="application/pdf" onChange={handleFile} style={{ display: 'none' }} disabled={uploading} />
+            <span role={uploading ? 'status' : undefined} aria-live={uploading ? 'polite' : undefined}>
+              {uploading ? 'Scanning…' : 'Click to select PDF'}
+            </span>
+            <input
+              id="probate-file-upload"
+              type="file"
+              accept="application/pdf"
+              onChange={handleFile}
+              style={{ position: 'absolute', width: 1, height: 1, overflow: 'hidden', clip: 'rect(0 0 0 0)' }}
+              disabled={uploading}
+              aria-label="Upload probate court filing PDF"
+            />
           </label>
         </div>
       </Card>

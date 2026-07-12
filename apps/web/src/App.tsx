@@ -33,7 +33,7 @@ const queryClient = new QueryClient({
 function ProtectedRoutes() {
   const { user, loading } = useAuth();
 
-  if (loading) return <div style={{ padding: 24 }}>Loading…</div>;
+  if (loading) return <div style={{ padding: 24 }} role="status" aria-live="polite">Loading…</div>;
   if (!user) return <Navigate to="/login" replace />;
 
   return (

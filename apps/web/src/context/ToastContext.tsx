@@ -80,10 +80,11 @@ export function ToastViewport(): JSX.Element {
       }}
     >
       {toasts.map((toast) => (
-        <div
+        <button
           key={toast.id}
-          role="status"
+          type="button"
           onClick={() => dismiss(toast.id)}
+          aria-label={`${toast.message}. Dismiss notification.`}
           style={{
             padding: '12px 16px',
             borderRadius: 6,
@@ -92,10 +93,13 @@ export function ToastViewport(): JSX.Element {
             cursor: 'pointer',
             boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
             fontSize: 14,
+            border: 'none',
+            textAlign: 'left',
+            fontFamily: 'inherit',
           }}
         >
           {toast.message}
-        </div>
+        </button>
       ))}
     </div>
   );

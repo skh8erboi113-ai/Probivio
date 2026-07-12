@@ -63,9 +63,16 @@ export function LeadsPage() {
 
       <Card>
         {isLoading ? (
-          <div style={{ color: palette.textMuted }}>Loading…</div>
+          <div style={{ color: palette.textMuted }} role="status" aria-live="polite">
+            Loading…
+          </div>
+        ) : (data?.data ?? []).length === 0 ? (
+          <div style={{ color: palette.textMuted, fontSize: 13 }}>No leads yet</div>
         ) : (
-          <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
+          <table aria-label="Leads" style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
+            <caption style={{ position: 'absolute', width: 1, height: 1, overflow: 'hidden', clip: 'rect(0 0 0 0)' }}>
+              List of leads with contact, property, status, source, and score
+            </caption>
             <thead>
               <tr style={{ borderBottom: `1px solid ${palette.border}` }}>
                 <Th>Contact</Th>
@@ -117,7 +124,12 @@ export function LeadsPage() {
                     </div>
                   </Td>
                   <Td>
-                    <Button variant="danger" size="sm" onClick={() => handleDelete(lead.id)}>
+                    <Button
+                      variant="danger"
+                      size="sm"
+                      onClick={() => handleDelete(lead.id)}
+                      aria-label={`Delete lead ${lead.contact.firstName} ${lead.contact.lastName}`}
+                    >
                       Delete
                     </Button>
                   </Td>
@@ -139,12 +151,13 @@ export function LeadsPage() {
             <div style={{ fontSize: 11, color: palette.textMuted, fontFamily: fonts.mono }}>
               {data.data.length} of {data.pagination.total}
             </div>
-            <div style={{ display: 'flex', gap: 6 }}>
+            <nav aria-label="Leads pagination" style={{ display: 'flex', gap: 6 }}>
               <Button
                 variant="secondary"
                 size="sm"
                 disabled={cursorStack.length <= 1}
                 onClick={goPrev}
+                aria-label="Previous page of leads"
               >
                 ← Prev
               </Button>
@@ -153,10 +166,11 @@ export function LeadsPage() {
                 size="sm"
                 disabled={!data.pagination.hasMore}
                 onClick={goNext}
+                aria-label="Next page of leads"
               >
                 Next →
               </Button>
-            </div>
+            </nav>
           </div>
         )}
       </Card>

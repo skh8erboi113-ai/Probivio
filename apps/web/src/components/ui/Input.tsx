@@ -1,4 +1,4 @@
-import { forwardRef, type InputHTMLAttributes } from 'react';
+import { forwardRef, useId, type InputHTMLAttributes } from 'react';
 
 import { fonts, palette, radii, spacing } from '../../theme';
 
@@ -9,13 +9,18 @@ interface Props extends InputHTMLAttributes<HTMLInputElement> {
 }
 
 export const Input = forwardRef<HTMLInputElement, Props>(function Input(
-  { label, error, hint, style, ...rest },
+  { label, error, hint, style, id, ...rest },
   ref,
 ) {
+  const generatedId = useId();
+  const inputId = id ?? generatedId;
+  const messageId = error || hint ? `${inputId}-message` : undefined;
+
   return (
-    <label style={{ display: 'flex', flexDirection: 'column', gap: spacing.xs }}>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: spacing.xs }}>
       {label ? (
-        <span
+        <label
+          htmlFor={inputId}
           style={{
             fontSize: 11,
             color: palette.textMuted,
@@ -25,12 +30,15 @@ export const Input = forwardRef<HTMLInputElement, Props>(function Input(
           }}
         >
           {label}
-        </span>
+        </label>
       ) : null}
 
       <input
         {...rest}
+        id={inputId}
         ref={ref}
+        aria-invalid={error ? true : undefined}
+        aria-describedby={messageId}
         style={{
           background: palette.surface,
           border: `1px solid ${error ? palette.red : palette.border}`,
@@ -45,10 +53,14 @@ export const Input = forwardRef<HTMLInputElement, Props>(function Input(
       />
 
       {error ? (
-        <span style={{ fontSize: 11, color: palette.red, fontFamily: fonts.mono }}>{error}</span>
+        <span id={messageId} role="alert" style={{ fontSize: 11, color: palette.red, fontFamily: fonts.mono }}>
+          {error}
+        </span>
       ) : hint ? (
-        <span style={{ fontSize: 11, color: palette.textDim, fontFamily: fonts.mono }}>{hint}</span>
+        <span id={messageId} style={{ fontSize: 11, color: palette.textDim, fontFamily: fonts.mono }}>
+          {hint}
+        </span>
       ) : null}
-    </label>
+    </div>
   );
 });

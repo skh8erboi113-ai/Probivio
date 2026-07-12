@@ -26,8 +26,13 @@ export function RealtimeIndicator() {
           : 'Idle';
 
   return (
-    <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+    <div
+      role="status"
+      aria-label={`Realtime connection: ${label}`}
+      style={{ display: 'flex', alignItems: 'center', gap: 6 }}
+    >
       <div
+        aria-hidden="true"
         style={{
           width: 8,
           height: 8,
