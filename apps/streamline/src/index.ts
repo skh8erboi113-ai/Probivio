@@ -83,6 +83,7 @@ async function main(): Promise<void> {
       path: '/api/agent',
       router: createAgentRouter({
         decisionLogRepo: container.decisionLogRepo,
+        agentSettingsRepo: container.agentSettingsRepo,
         agentService: container.agentService,
       }),
     },

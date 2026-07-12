@@ -1,3 +1,4 @@
+import { ConflictError as DbConflictError } from '@listinglogic/db';
 import { LeadStatus } from '@listinglogic/types';
 import { agentDecisionSchema } from '@listinglogic/validators';
 
@@ -10,10 +11,12 @@ import type {
   AgentDecisionLogRepository,
   InteractionRepository,
   LeadRepository,
+  OperatorAgentSettingsRepository,
 } from '@listinglogic/db';
 import type { Logger } from '@listinglogic/logger';
 import type {
   AgentAction,
+  AgentAlternative,
   AgentDecisionLog,
   AgentTrigger,
   IsoTimestamp,
@@ -21,8 +24,6 @@ import type {
   LeadId,
   OperatorId,
 } from '@listinglogic/types';
-
-
 
 /**
  * Gemini-driven automation decision engine.
@@ -32,16 +33,23 @@ import type {
  * periodic scheduled sweep) hands the full lead context to Gemini and asks it
  * a single question: "what, if anything, should happen next?"
  *
- * Gemini's answer is a JSON decision (`reasoning` + one `action` from a
- * closed whitelist — see packages/validators/automation.schema.ts). Nothing
- * the model returns is trusted or executed until it:
+ * Gemini's answer is a JSON decision (`reasoning` + `confidence` +
+ * `alternativesConsidered` + one `action` from a closed whitelist — see
+ * packages/validators/automation.schema.ts). Nothing the model returns is
+ * trusted or executed until it:
  *   1. Passes strict Zod validation against the action whitelist.
  *   2. Passes runtime guardrails (lead not closed/dead, per-lead daily email
  *      cap, valid status transitions).
+ *   3. Clears the operator's confidence-gated autonomy threshold — see
+ *      `checkAutonomy()`. Below it, the action is drafted and logged as
+ *      `pendingApproval: true` instead of executed, and must be approved via
+ *      `resolveApproval()` before it runs.
  *
- * Every decision — executed, blocked, or "no_action" — is written to an
- * immutable audit log (AgentDecisionLogRepository) with Gemini's reasoning,
- * so operators can see exactly what the AI considered and why.
+ * Every decision — executed, blocked, pending approval, or "no_action" — is
+ * written to an immutable audit log (AgentDecisionLogRepository) with
+ * Gemini's reasoning, confidence, and the alternatives it rejected, so
+ * operators can see exactly what the AI considered and why, not just what
+ * it did.
  */
 
 const TERMINAL_STATUSES: readonly string[] = [LeadStatus.CLOSED_WON, LeadStatus.CLOSED_LOST, LeadStatus.DEAD];
@@ -53,6 +61,7 @@ export class AgentService {
     private readonly leadRepo: LeadRepository,
     private readonly interactionRepo: InteractionRepository,
     private readonly decisionLogRepo: AgentDecisionLogRepository,
+    private readonly agentSettingsRepo: OperatorAgentSettingsRepository,
     private readonly gemini: GeminiService,
     private readonly sendgrid: SendGridService,
     private readonly eventPublisher: EventPublisherService,
@@ -93,7 +102,12 @@ export class AgentService {
 
     const features = await this.interactionRepo.computeFeatures(operatorId, leadId);
 
-    let decision: { readonly reasoning: string; readonly action: AgentAction };
+    let decision: {
+      readonly reasoning: string;
+      readonly action: AgentAction;
+      readonly confidence: number;
+      readonly alternativesConsidered: readonly AgentAlternative[];
+    };
     try {
       decision = await this.gemini.decideNextAction({
         lead,
@@ -119,9 +133,43 @@ export class AgentService {
       return this.logDecision(operatorId, leadId, trigger, {
         action: decision.action,
         reasoning: decision.reasoning,
+        confidence: decision.confidence,
+        alternativesConsidered: decision.alternativesConsidered,
         executed: false,
         blockedReason: guardrailResult.reason,
       });
+    }
+
+    // Confidence-gated autonomy: below the operator's configured threshold
+    // (or always, for send_email, if the operator requires it), draft the
+    // action instead of executing it — a human must tap approve first.
+    const autonomy = await this.checkAutonomy(operatorId, decision.action, decision.confidence);
+    if (!autonomy.autoExecute) {
+      const log = await this.logDecision(operatorId, leadId, trigger, {
+        action: decision.action,
+        reasoning: decision.reasoning,
+        confidence: decision.confidence,
+        alternativesConsidered: decision.alternativesConsidered,
+        executed: false,
+        pendingApproval: true,
+      });
+
+      this.eventPublisher.publish('agent.decision', operatorId, {
+        leadId,
+        trigger,
+        action: decision.action.type,
+        executed: false,
+        pendingApproval: true,
+      });
+
+      this.logger.info('Agent decision drafted for approval (below autonomy threshold)', {
+        leadId,
+        confidence: decision.confidence,
+        threshold: autonomy.threshold,
+        reason: autonomy.reason,
+      });
+
+      return log;
     }
 
     try {
@@ -132,6 +180,8 @@ export class AgentService {
       return this.logDecision(operatorId, leadId, trigger, {
         action: decision.action,
         reasoning: decision.reasoning,
+        confidence: decision.confidence,
+        alternativesConsidered: decision.alternativesConsidered,
         executed: false,
         blockedReason: `execution_error: ${message}`.slice(0, 500),
       });
@@ -140,6 +190,8 @@ export class AgentService {
     const log = await this.logDecision(operatorId, leadId, trigger, {
       action: decision.action,
       reasoning: decision.reasoning,
+      confidence: decision.confidence,
+      alternativesConsidered: decision.alternativesConsidered,
       executed: true,
     });
 
@@ -151,6 +203,93 @@ export class AgentService {
     });
 
     return log;
+  }
+
+  /**
+   * Approve or reject a decision that was drafted pending human sign-off
+   * (confidence-gated autonomy). Approving runs the exact action Gemini
+   * proposed — the operator can't edit it here, only accept or reject, so
+   * the audit trail always matches what was actually executed.
+   */
+  public async resolveApproval(
+    operatorId: OperatorId,
+    decisionId: string,
+    approve: boolean,
+  ): Promise<AgentDecisionLog> {
+    const existing = await this.decisionLogRepo.findByIdOrThrow(operatorId, decisionId);
+
+    if (!existing.pendingApproval) {
+      throw new DbConflictError(`This decision is not awaiting approval: ${decisionId}`);
+    }
+
+    if (!approve) {
+      const rejected = await this.decisionLogRepo.resolveApproval(operatorId, decisionId, {
+        executed: false,
+        blockedReason: 'rejected_by_operator',
+      });
+      this.logger.info('Agent decision rejected by operator', { leadId: existing.leadId, decisionId });
+      return rejected;
+    }
+
+    const lead = await this.leadRepo.findByIdOrThrow(operatorId, existing.leadId);
+
+    try {
+      await this.executeAction(operatorId, lead, existing.action);
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err);
+      this.logger.error('Approved agent action failed to execute', {
+        leadId: existing.leadId,
+        decisionId,
+        error: message,
+      });
+      return this.decisionLogRepo.resolveApproval(operatorId, decisionId, {
+        executed: false,
+        blockedReason: `execution_error: ${message}`.slice(0, 500),
+      });
+    }
+
+    const resolved = await this.decisionLogRepo.resolveApproval(operatorId, decisionId, { executed: true });
+
+    this.eventPublisher.publish('agent.decision', operatorId, {
+      leadId: existing.leadId,
+      trigger: existing.trigger,
+      action: existing.action.type,
+      executed: true,
+    });
+
+    this.logger.info('Agent decision approved and executed', { leadId: existing.leadId, decisionId });
+    return resolved;
+  }
+
+  /**
+   * Confidence-gated autonomy check. Operators set a per-operator
+   * `autonomyThreshold` (default 75%): Gemini decisions at or above it
+   * execute immediately, below it they're drafted for one-tap approval.
+   * `send_email` can additionally be forced to always require approval
+   * (the default) regardless of confidence, since it's the highest-stakes
+   * action — a real message sent to a real person.
+   */
+  private async checkAutonomy(
+    operatorId: OperatorId,
+    action: AgentAction,
+    confidence: number,
+  ): Promise<{ readonly autoExecute: boolean; readonly threshold: number; readonly reason?: string }> {
+    if (action.type === 'no_action') {
+      // Nothing to gate — there's no real-world effect to approve.
+      return { autoExecute: true, threshold: 1 };
+    }
+
+    const settings = await this.agentSettingsRepo.getCurrent(operatorId);
+
+    if (action.type === 'send_email' && settings.requireApprovalForEmail) {
+      return { autoExecute: false, threshold: settings.autonomyThreshold, reason: 'email_requires_approval' };
+    }
+
+    if (confidence < settings.autonomyThreshold) {
+      return { autoExecute: false, threshold: settings.autonomyThreshold, reason: 'below_confidence_threshold' };
+    }
+
+    return { autoExecute: true, threshold: settings.autonomyThreshold };
   }
 
   /**
@@ -250,7 +389,10 @@ export class AgentService {
       readonly action: AgentAction;
       readonly reasoning: string;
       readonly executed: boolean;
+      readonly confidence?: number;
+      readonly alternativesConsidered?: readonly AgentAlternative[];
       readonly blockedReason?: string;
+      readonly pendingApproval?: boolean;
     },
   ): Promise<AgentDecisionLog> {
     const log = await this.decisionLogRepo.create(operatorId, {
@@ -260,7 +402,12 @@ export class AgentService {
       reasoning: input.reasoning,
       executed: input.executed,
       modelVersion: 'gemini-1.5-flash',
+      ...(input.confidence !== undefined && { confidence: input.confidence }),
+      ...(input.alternativesConsidered && input.alternativesConsidered.length > 0
+        ? { alternativesConsidered: input.alternativesConsidered }
+        : {}),
       ...(input.blockedReason && { blockedReason: input.blockedReason }),
+      ...(input.pendingApproval && { pendingApproval: true }),
     });
 
     this.logger.info('Agent decision logged', {
@@ -268,7 +415,9 @@ export class AgentService {
       trigger,
       action: input.action.type,
       executed: input.executed,
+      ...(input.confidence !== undefined && { confidence: input.confidence }),
       ...(input.blockedReason && { blockedReason: input.blockedReason }),
+      ...(input.pendingApproval && { pendingApproval: true }),
     });
 
     return log;
@@ -282,6 +431,7 @@ export function createAgentService(deps: {
   readonly leadRepo: LeadRepository;
   readonly interactionRepo: InteractionRepository;
   readonly decisionLogRepo: AgentDecisionLogRepository;
+  readonly agentSettingsRepo: OperatorAgentSettingsRepository;
   readonly gemini: GeminiService;
   readonly sendgrid: SendGridService;
   readonly eventPublisher: EventPublisherService;
@@ -291,6 +441,7 @@ export function createAgentService(deps: {
     deps.leadRepo,
     deps.interactionRepo,
     deps.decisionLogRepo,
+    deps.agentSettingsRepo,
     deps.gemini,
     deps.sendgrid,
     deps.eventPublisher,

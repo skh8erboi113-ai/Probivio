@@ -1,3 +1,8 @@
+import { InteractionOutcome, InteractionType } from '@listinglogic/types';
+
+import { BaseRepository } from './base.repository.js';
+import { Collections, Fields } from './collections.js';
+
 import type { Logger } from '@listinglogic/logger';
 import type {
   CreateInteractionInput,
@@ -7,10 +12,6 @@ import type {
   LeadId,
   OperatorId,
 } from '@listinglogic/types';
-import { InteractionOutcome, InteractionType } from '@listinglogic/types';
-
-import { BaseRepository } from './base.repository.js';
-import { Collections, Fields } from './collections.js';
 
 /**
  * Interactions are append-only — no updates or deletes.
@@ -25,7 +26,7 @@ export class InteractionRepository extends BaseRepository<Interaction> {
    * Record a new interaction. This is the primary feedback signal
    * for the scoring engine's learning loop.
    */
-  public async record(
+  public record(
     operatorId: OperatorId,
     input: CreateInteractionInput,
   ): Promise<Interaction> {
@@ -148,11 +149,11 @@ export class InteractionRepository extends BaseRepository<Interaction> {
   /**
    * Prevent updates and deletes (append-only invariant).
    */
-  public override async update(): Promise<never> {
+  public override update(): Promise<never> {
     throw new Error('Interactions are append-only — updates are forbidden');
   }
 
-  public override async delete(): Promise<never> {
+  public override delete(): Promise<never> {
     throw new Error('Interactions are append-only — deletes are forbidden');
   }
 

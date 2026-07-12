@@ -1,3 +1,6 @@
+import { BaseRepository, type ListOptions, type ListResult } from './base.repository.js';
+import { Collections, Fields } from './collections.js';
+
 import type { Logger } from '@listinglogic/logger';
 import type {
   IsoTimestamp,
@@ -8,8 +11,6 @@ import type {
   UsStateCode,
 } from '@listinglogic/types';
 
-import { BaseRepository, type ListOptions, type ListResult } from './base.repository.js';
-import { Collections, Fields } from './collections.js';
 
 export interface ProbateFilters {
   readonly status?: string;
@@ -27,7 +28,7 @@ export class ProbateRepository extends BaseRepository<ProbateCase> {
     super(Collections.PROBATE_CASES, 'ProbateCase', logger);
   }
 
-  public async listWithFilters(
+  public listWithFilters(
     operatorId: OperatorId,
     options: ProbateListOptions,
   ): Promise<ListResult<ProbateCase>> {
@@ -49,7 +50,7 @@ export class ProbateRepository extends BaseRepository<ProbateCase> {
    * Mark a probate case as converted to a lead.
    * Also stamps reviewedAt.
    */
-  public async markConverted(
+  public markConverted(
     operatorId: OperatorId,
     probateCaseId: ProbateCaseId,
     leadId: LeadId,

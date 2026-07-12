@@ -189,21 +189,40 @@ export function LeadDetailPage() {
                     style={{
                       padding: '8px 10px',
                       borderRadius: 6,
-                      border: `1px solid ${palette.border}`,
+                      border: `1px solid ${d.pendingApproval ? palette.accent : palette.border}`,
                       fontSize: 12,
                     }}
                   >
-                    <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                       <span style={{ fontWeight: 600 }}>{ACTION_LABELS[d.action.type] ?? d.action.type}</span>
-                      <Badge color={d.executed ? 'green' : 'red'}>{d.executed ? 'Executed' : 'Blocked'}</Badge>
+                      <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+                        {d.confidence !== undefined && (
+                          <Badge color={d.confidence >= 0.75 ? 'green' : 'accent'}>
+                            {Math.round(d.confidence * 100)}%
+                          </Badge>
+                        )}
+                        <Badge color={d.pendingApproval ? 'accent' : d.executed ? 'green' : 'red'}>
+                          {d.pendingApproval ? 'Pending' : d.executed ? 'Executed' : 'Blocked'}
+                        </Badge>
+                      </div>
                     </div>
                     <div style={{ color: palette.textMuted, marginTop: 4, fontSize: 11, lineHeight: 1.5 }}>
                       {d.reasoning}
                     </div>
+                    {d.alternativesConsidered && d.alternativesConsidered.length > 0 && (
+                      <ul style={{ margin: '6px 0 0', paddingLeft: 16 }}>
+                        {d.alternativesConsidered.map((alt, idx) => (
+                          <li key={idx} style={{ fontSize: 10, color: palette.textDim, lineHeight: 1.5 }}>
+                            {ACTION_LABELS[alt.action] ?? alt.action} — {alt.reasonRejected}
+                          </li>
+                        ))}
+                      </ul>
+                    )}
                   </div>
                 ))}
               </div>
             )}
+
           </Card>
 
           <Card accent="green">

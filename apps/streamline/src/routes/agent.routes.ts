@@ -1,4 +1,8 @@
-import { agentDecisionLogFiltersSchema } from '@listinglogic/validators';
+import {
+  agentDecisionLogFiltersSchema,
+  resolveAgentDecisionApprovalSchema,
+  updateOperatorAgentSettingsSchema,
+} from '@listinglogic/validators';
 import { Router } from 'express';
 
 import { requireAuth } from '../middleware/auth.js';
@@ -6,19 +10,26 @@ import { aiRateLimiter } from '../middleware/rate-limit.js';
 import { validate } from '../middleware/validate.js';
 
 import type { AgentService } from '../services/agent.service.js';
-import type { AgentDecisionLogRepository } from '@listinglogic/db';
-import type { AgentDecisionLog, ApiListResponse, ApiResponse, LeadId } from '@listinglogic/types';
-
+import type { AgentDecisionLogRepository, OperatorAgentSettingsRepository } from '@listinglogic/db';
+import type {
+  AgentDecisionLog,
+  ApiListResponse,
+  ApiResponse,
+  LeadId,
+  OperatorAgentSettings,
+} from '@listinglogic/types';
 
 export interface AgentRouterDeps {
   readonly decisionLogRepo: AgentDecisionLogRepository;
+  readonly agentSettingsRepo: OperatorAgentSettingsRepository;
   readonly agentService: AgentService;
 }
 
 /**
  * Read-only audit trail of the Gemini automation agent's decisions, plus a
- * manual "evaluate this lead now" trigger for operators who don't want to
- * wait for the next scheduled sweep.
+ * manual "evaluate this lead now" trigger, the confidence-gated autonomy
+ * settings dial, and one-tap approve/reject for decisions drafted below the
+ * operator's autonomy threshold.
  */
 export function createAgentRouter(deps: AgentRouterDeps): Router {
   const router = Router();
@@ -89,6 +100,49 @@ export function createAgentRouter(deps: AgentRouterDeps): Router {
       next(err);
     }
   });
+
+  // Confidence-gated autonomy dial — read/update the per-operator threshold
+  // and whether send_email always requires a human tap.
+  router.get('/settings', async (req, res, next) => {
+    try {
+      const settings = await deps.agentSettingsRepo.getCurrent(req.operatorId);
+      const body: ApiResponse<OperatorAgentSettings> = { data: settings, requestId: req.requestId };
+      res.json(body);
+    } catch (err) {
+      next(err);
+    }
+  });
+
+  router.patch('/settings', validate({ body: updateOperatorAgentSettingsSchema }), async (req, res, next) => {
+    try {
+      const settings = await deps.agentSettingsRepo.update(req.operatorId, req.body as never);
+      const body: ApiResponse<OperatorAgentSettings> = {
+        data: settings,
+        message: 'Autonomy settings updated',
+        requestId: req.requestId,
+      };
+      res.json(body);
+    } catch (err) {
+      next(err);
+    }
+  });
+
+  // One-tap approve/reject for a decision Gemini drafted but didn't execute
+  // because it fell below the operator's confidence threshold.
+  router.post(
+    '/decisions/:id/resolve',
+    validate({ body: resolveAgentDecisionApprovalSchema }),
+    async (req, res, next) => {
+      try {
+        const { approve } = req.body as { readonly approve: boolean };
+        const resolved = await deps.agentService.resolveApproval(req.operatorId, req.params.id as string, approve);
+        const body: ApiResponse<AgentDecisionLog> = { data: resolved, requestId: req.requestId };
+        res.json(body);
+      } catch (err) {
+        next(err);
+      }
+    },
+  );
 
   return router;
 }

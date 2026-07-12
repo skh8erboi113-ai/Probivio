@@ -1,6 +1,7 @@
+import { type App, cert, deleteApp, getApps, initializeApp } from 'firebase-admin/app';
+import { type Firestore, getFirestore } from 'firebase-admin/firestore';
+
 import type { Logger } from '@listinglogic/logger';
-import { App, cert, deleteApp, getApps, initializeApp } from 'firebase-admin/app';
-import { Firestore, getFirestore } from 'firebase-admin/firestore';
 
 /**
  * Firebase Admin singleton.

@@ -1,3 +1,9 @@
+import { LeadStatus } from '@listinglogic/types';
+import { FieldPath } from 'firebase-admin/firestore';
+
+import { BaseRepository, type ListOptions, type ListResult } from './base.repository.js';
+import { Collections, Fields } from './collections.js';
+
 import type { Logger } from '@listinglogic/logger';
 import type {
   IsoTimestamp,
@@ -8,11 +14,6 @@ import type {
   OperatorId,
   ScoreResult,
 } from '@listinglogic/types';
-import { LeadStatus } from '@listinglogic/types';
-import { FieldPath } from 'firebase-admin/firestore';
-
-import { BaseRepository, type ListOptions, type ListResult } from './base.repository.js';
-import { Collections, Fields } from './collections.js';
 
 export interface LeadListOptions extends ListOptions {
   readonly sortBy: LeadSortField;
@@ -24,7 +25,7 @@ export class LeadRepository extends BaseRepository<Lead> {
     super(Collections.LEADS, 'Lead', logger);
   }
 
-  public async listWithFilters(
+  public listWithFilters(
     operatorId: OperatorId,
     options: LeadListOptions,
   ): Promise<ListResult<Lead>> {
@@ -62,7 +63,7 @@ export class LeadRepository extends BaseRepository<Lead> {
    * Apply a score result to a lead. Called by the scoring engine.
    * Uses a transaction to ensure score + scoreConfidence + scoredAt are atomic.
    */
-  public async applyScore(
+  public applyScore(
     operatorId: OperatorId,
     leadId: LeadId,
     score: ScoreResult,
@@ -79,7 +80,7 @@ export class LeadRepository extends BaseRepository<Lead> {
    * Increment a lead's last-contacted timestamp when a communication is sent.
    * Idempotent — safe to call from automation retries.
    */
-  public async touchLastContacted(
+  public touchLastContacted(
     operatorId: OperatorId,
     leadId: LeadId,
   ): Promise<Lead> {

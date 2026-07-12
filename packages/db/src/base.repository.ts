@@ -1,3 +1,10 @@
+import { FieldPath, FieldValue } from 'firebase-admin/firestore';
+
+import { getDb } from './client.js';
+import { Fields } from './collections.js';
+import { createConverter, type WithId } from './converters.js';
+import { DatabaseError, ForbiddenError, NotFoundError, OptimisticLockError } from './errors.js';
+
 import type { Logger } from '@listinglogic/logger';
 import type { IsoTimestamp, OperatorId } from '@listinglogic/types';
 import type {
@@ -9,12 +16,6 @@ import type {
   Transaction,
   WriteBatch,
 } from 'firebase-admin/firestore';
-import { FieldPath, FieldValue } from 'firebase-admin/firestore';
-
-import { getDb } from './client.js';
-import { Fields } from './collections.js';
-import { createConverter, type WithId } from './converters.js';
-import { DatabaseError, ForbiddenError, NotFoundError, OptimisticLockError } from './errors.js';
 
 /**
  * Base repository with common patterns:
@@ -330,7 +331,7 @@ export abstract class BaseRepository<T extends BaseEntity> {
     return this.db.batch();
   }
 
-  public async runTransaction<R>(
+  public runTransaction<R>(
     updateFn: (tx: Transaction) => Promise<R>,
   ): Promise<R> {
     return this.db.runTransaction(updateFn);

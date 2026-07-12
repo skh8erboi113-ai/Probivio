@@ -16,7 +16,7 @@ export function createConverter<T extends WithId>(): FirestoreDataConverter<T> {
   return {
     toFirestore(entity: T): DocumentData {
       const { id: _id, ...rest } = entity;
-      return rest as DocumentData;
+      return rest;
     },
     fromFirestore(snapshot: QueryDocumentSnapshot): T {
       const data = snapshot.data();

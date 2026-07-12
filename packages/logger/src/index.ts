@@ -94,7 +94,11 @@ const developmentFormat = winston.format.combine(
   winston.format.colorize({ all: true }),
   winston.format.printf(({ timestamp, level, message, requestId, ...rest }) => {
     const meta = Object.keys(rest).length ? ` ${JSON.stringify(rest)}` : '';
-    const reqId = requestId ? ` [${String(requestId).slice(0, 8)}]` : '';
+    // requestId is always a plain string when set (see context.ts) — cast explicitly
+    // rather than relying on template-literal coercion, which TS flags as unsafe
+    // for a value typed as `unknown` even though it's never actually an object here.
+    const requestIdStr = typeof requestId === 'string' ? requestId : undefined;
+    const reqId = requestIdStr ? ` [${requestIdStr.slice(0, 8)}]` : '';
     return `${String(timestamp)} ${level}${reqId} ${String(message)}${meta}`;
   }),
 );

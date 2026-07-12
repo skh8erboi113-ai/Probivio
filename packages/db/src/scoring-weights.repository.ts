@@ -1,9 +1,10 @@
-import type { Logger } from '@listinglogic/logger';
-import type { IsoTimestamp, ScoringWeights } from '@listinglogic/types';
-import { Firestore } from 'firebase-admin/firestore';
+import { type Firestore } from 'firebase-admin/firestore';
 
 import { getDb } from './client.js';
 import { Collections } from './collections.js';
+
+import type { Logger } from '@listinglogic/logger';
+import type { IsoTimestamp, ScoringWeights } from '@listinglogic/types';
 
 /**
  * Scoring weights store. There is exactly one document per operator per model version.

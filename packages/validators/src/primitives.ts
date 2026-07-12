@@ -71,12 +71,14 @@ export const safeStringSchema = (min: number, max: number): z.ZodType<string, st
     .trim()
     .min(min)
     .max(max)
+    // eslint-disable-next-line no-control-regex -- intentionally stripping control chars for security
     .transform((val) => val.replace(/[\x00-\x1F\x7F]/g, ''));
 
 export const optionalNoteSchema = z
   .string()
   .trim()
   .max(5000, 'Notes exceed 5000 characters')
+  // eslint-disable-next-line no-control-regex -- intentionally stripping control chars for security
   .transform((val) => val.replace(/[\x00-\x1F\x7F]/g, ''))
   .optional();
 

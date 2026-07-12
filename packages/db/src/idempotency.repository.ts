@@ -1,9 +1,10 @@
-import type { Logger } from '@listinglogic/logger';
-import { Firestore } from 'firebase-admin/firestore';
+import { type Firestore } from 'firebase-admin/firestore';
 
 import { getDb } from './client.js';
 import { Collections } from './collections.js';
 import { ConflictError } from './errors.js';
+
+import type { Logger } from '@listinglogic/logger';
 
 interface IdempotencyRecord {
   readonly key: string;

@@ -1,3 +1,8 @@
+
+import { BaseRepository, type ListOptions, type ListResult } from './base.repository.js';
+import { Collections, Fields } from './collections.js';
+import { ConflictError, NotFoundError } from './errors.js';
+
 import type { Logger } from '@listinglogic/logger';
 import type {
   AgentDecisionLog,
@@ -6,9 +11,6 @@ import type {
   LeadId,
   OperatorId,
 } from '@listinglogic/types';
-
-import { BaseRepository, type ListOptions, type ListResult } from './base.repository.js';
-import { Collections, Fields } from './collections.js';
 
 export interface AgentDecisionLogFilters {
   readonly leadId?: LeadId;
@@ -30,7 +32,7 @@ export class AgentDecisionLogRepository extends BaseRepository<AgentDecisionLog>
     super(Collections.AGENT_DECISION_LOGS, 'AgentDecisionLog', logger);
   }
 
-  public async listWithFilters(
+  public listWithFilters(
     operatorId: OperatorId,
     options: AgentDecisionLogListOptions,
   ): Promise<ListResult<AgentDecisionLog>> {
@@ -63,11 +65,50 @@ export class AgentDecisionLogRepository extends BaseRepository<AgentDecisionLog>
     return snap.docs.filter((doc) => doc.data().action.type === 'send_email').length;
   }
 
-  public override async update(): Promise<never> {
+  public override update(): Promise<never> {
     throw new Error('Agent decision logs are immutable');
   }
 
-  public override async delete(): Promise<never> {
+  public override delete(): Promise<never> {
     throw new Error('Agent decision logs are immutable');
+  }
+
+  /**
+   * The one narrow exception to immutability: flipping a confidence-gated
+   * decision from "drafted, awaiting human approval" to "approved and
+   * executed" (or "rejected"). This does not touch `reasoning`, `action`,
+   * or any other field Gemini produced — only the approval-lifecycle fields
+   * — so the original decision record is still a faithful, unedited record
+   * of what the model proposed and why.
+   */
+  public resolveApproval(
+    operatorId: OperatorId,
+    id: string,
+    resolution: { readonly executed: boolean; readonly blockedReason?: string },
+  ): Promise<AgentDecisionLog> {
+    const ref = this.docRef(id);
+
+    return this.runTransaction(async (tx) => {
+      const snap = await tx.get(ref);
+      if (!snap.exists) throw new NotFoundError(this.entityName, id);
+
+      const current = snap.data();
+      if (!current || current.operatorId !== operatorId) {
+        throw new NotFoundError(this.entityName, id);
+      }
+      if (!current.pendingApproval) {
+        throw new ConflictError(`Decision is not awaiting approval: ${id}`);
+      }
+
+      const updated: AgentDecisionLog = {
+        ...current,
+        executed: resolution.executed,
+        pendingApproval: false,
+        ...(resolution.blockedReason && { blockedReason: resolution.blockedReason }),
+      };
+
+      tx.set(ref, updated);
+      return updated;
+    });
   }
 }

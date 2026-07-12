@@ -1,3 +1,8 @@
+import { BuyerStatus } from '@listinglogic/types';
+
+import { BaseRepository, type ListOptions, type ListResult } from './base.repository.js';
+import { Collections, Fields } from './collections.js';
+
 import type { Logger } from '@listinglogic/logger';
 import type {
   Buyer,
@@ -7,10 +12,6 @@ import type {
   OperatorId,
   UsStateCode,
 } from '@listinglogic/types';
-import { BuyerStatus } from '@listinglogic/types';
-
-import { BaseRepository, type ListOptions, type ListResult } from './base.repository.js';
-import { Collections, Fields } from './collections.js';
 
 export interface BuyerFilters {
   readonly type?: string;
@@ -28,7 +29,7 @@ export class BuyerRepository extends BaseRepository<Buyer> {
     super(Collections.BUYERS, 'Buyer', logger);
   }
 
-  public async listWithFilters(
+  public listWithFilters(
     operatorId: OperatorId,
     options: BuyerListOptions,
   ): Promise<ListResult<Buyer>> {
@@ -106,7 +107,7 @@ export class BuyerRepository extends BaseRepository<Buyer> {
           stats.activeDeals = Math.max(0, stats.activeDeals - 1);
           stats.lastPurchaseAt = new Date().toISOString();
           if (dealVolume) {
-            stats.totalVolume = (stats.totalVolume + dealVolume) as Cents;
+            stats.totalVolume = (stats.totalVolume + dealVolume);
           }
           break;
       }

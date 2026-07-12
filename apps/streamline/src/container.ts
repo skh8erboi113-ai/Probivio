@@ -4,6 +4,7 @@ import {
   IdempotencyRepository,
   InteractionRepository,
   LeadRepository,
+  OperatorAgentSettingsRepository,
   ProbateRepository,
   ScoreHistoryRepository,
   ScoringWeightsRepository,
@@ -47,6 +48,7 @@ export interface AppContainer {
   readonly interactionRepo: InteractionRepository;
   readonly scoreHistoryRepo: ScoreHistoryRepository;
   readonly weightsRepo: ScoringWeightsRepository;
+  readonly agentSettingsRepo: OperatorAgentSettingsRepository;
   readonly idempotencyRepo: IdempotencyRepository;
 
   readonly gemini: GeminiService;
@@ -79,6 +81,7 @@ export function buildContainer(): AppContainer {
   const interactionRepo = new InteractionRepository(logger);
   const scoreHistoryRepo = new ScoreHistoryRepository(logger);
   const weightsRepo = new ScoringWeightsRepository(logger);
+  const agentSettingsRepo = new OperatorAgentSettingsRepository(logger);
   const idempotencyRepo = new IdempotencyRepository(logger);
 
   const gemini = createGeminiService(logger);
@@ -122,6 +125,7 @@ export function buildContainer(): AppContainer {
     leadRepo,
     interactionRepo,
     decisionLogRepo,
+    agentSettingsRepo,
     gemini,
     sendgrid,
     eventPublisher,
@@ -137,6 +141,7 @@ export function buildContainer(): AppContainer {
     interactionRepo,
     scoreHistoryRepo,
     weightsRepo,
+    agentSettingsRepo,
     idempotencyRepo,
     gemini,
     sendgrid,

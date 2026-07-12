@@ -60,3 +60,5 @@ export { ScoreHistoryRepository } from './score-history.repository.js';
 export { IdempotencyRepository } from './idempotency.repository.js';
 
 export { ScoringWeightsRepository } from './scoring-weights.repository.js';
+
+export { OperatorAgentSettingsRepository } from './operator-agent-settings.repository.js';

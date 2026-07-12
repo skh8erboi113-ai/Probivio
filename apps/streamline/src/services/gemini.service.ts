@@ -223,10 +223,17 @@ export class GeminiService {
           '{"type":"schedule_follow_up","inDays":number,"note":string}; ' +
           '{"type":"no_action"} — use this whenever no clear action is warranted right now. ' +
           'Never fabricate facts not present in the lead data. Never use pressure tactics, guarantees, ' +
-          'or urgency language in emails. Respond with ONLY this JSON shape: ' +
-          '{"reasoning": string (max 1000 chars, explain your decision), "action": <one action object above>}.',
+          'or urgency language in emails. ' +
+          'Also report your confidence (0-1) that this is the right call, and up to 3 other actions you ' +
+          'seriously considered and rejected, each with a short reason why (e.g. "could have emailed, but ' +
+          'this lead already received one today, so scheduled a follow-up instead") — omit alternatives you ' +
+          'never seriously weighed; an empty list is fine when the decision was clear-cut. ' +
+          'Respond with ONLY this JSON shape: {"reasoning": string (max 1000 chars, explain your decision), ' +
+          '"confidence": number (0-1), ' +
+          '"alternativesConsidered": [{"action": <action type string>, "reasonRejected": string (max 300 chars)}], ' +
+          '"action": <one action object above>}.',
         userPrompt: `LEAD CONTEXT:\n${JSON.stringify(leadSummary, null, 2)}`,
-        maxOutputTokens: 800,
+        maxOutputTokens: 1000,
         temperature: 0.3,
       },
       (raw) => {

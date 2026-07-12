@@ -1,3 +1,6 @@
+import { BaseRepository } from './base.repository.js';
+import { Collections, Fields } from './collections.js';
+
 import type { Logger } from '@listinglogic/logger';
 import type {
   IsoTimestamp,
@@ -8,8 +11,6 @@ import type {
   ScoreResult,
 } from '@listinglogic/types';
 
-import { BaseRepository } from './base.repository.js';
-import { Collections, Fields } from './collections.js';
 
 /**
  * Score history is server-write-only (see firestore.rules).
@@ -23,7 +24,7 @@ export class ScoreHistoryRepository extends BaseRepository<ScoreHistory> {
   /**
    * Persist a score result to the history log.
    */
-  public async record(
+  public record(
     operatorId: OperatorId,
     leadId: LeadId,
     score: ScoreResult,
@@ -91,11 +92,11 @@ export class ScoreHistoryRepository extends BaseRepository<ScoreHistory> {
   /**
    * Score history is server-write only.
    */
-  public override async delete(): Promise<never> {
+  public override delete(): Promise<never> {
     throw new Error('Score history is immutable');
   }
 
-  public override async update(): Promise<never> {
+  public override update(): Promise<never> {
     throw new Error('Score history is immutable');
   }
 

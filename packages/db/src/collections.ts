@@ -5,6 +5,7 @@
 
 export const Collections = {
   OPERATORS: 'operators',
+  OPERATOR_SETTINGS: 'operator_settings',
   LEADS: 'leads',
   BUYERS: 'buyers',
   PROBATE_CASES: 'probate_cases',

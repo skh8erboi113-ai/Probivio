@@ -1,5 +1,5 @@
-import type { AgentDecisionLog, ApiListResponse, ApiResponse } from '@listinglogic/types';
-import type { AgentDecisionLogFiltersPayload } from '@listinglogic/validators';
+import type { AgentDecisionLog, ApiListResponse, ApiResponse, OperatorAgentSettings } from '@listinglogic/types';
+import type { AgentDecisionLogFiltersPayload, UpdateOperatorAgentSettingsPayload } from '@listinglogic/validators';
 
 import { api } from './client';
 
@@ -17,4 +17,17 @@ export const agentApi = {
   evaluateNow(leadId: string) {
     return api.post<ApiResponse<AgentDecisionLog>>(`/api/agent/evaluate/${leadId}`, {});
   },
+
+  getSettings() {
+    return api.get<ApiResponse<OperatorAgentSettings>>('/api/agent/settings');
+  },
+
+  updateSettings(input: UpdateOperatorAgentSettingsPayload) {
+    return api.patch<ApiResponse<OperatorAgentSettings>>('/api/agent/settings', input);
+  },
+
+  resolveDecision(decisionId: string, approve: boolean) {
+    return api.post<ApiResponse<AgentDecisionLog>>(`/api/agent/decisions/${decisionId}/resolve`, { approve });
+  },
 };
+
