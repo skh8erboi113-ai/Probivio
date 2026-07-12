@@ -19,10 +19,15 @@ RUN addgroup -g 1001 -S nodejs && \
 
 WORKDIR /app
 
-# Install pnpm
+# Install pnpm directly via npm rather than `corepack prepare` — corepack's
+# signature verification against a stale bundled key intermittently rejects
+# otherwise-legitimate pnpm releases after npm registry key rotations
+# (see https://github.com/pnpm/pnpm/issues/9029), which breaks this build
+# non-deterministically. Installing the exact pinned version via npm sidesteps
+# that verification entirely and is just as reproducible.
 ENV PNPM_HOME="/pnpm"
 ENV PATH="$PNPM_HOME:$PATH"
-RUN corepack enable && corepack prepare pnpm@9.0.0 --activate
+RUN npm install -g pnpm@9.15.9
 
 # ─── Stage 2: Dependencies ────────────────────────────────────────────────────
 FROM base AS deps
