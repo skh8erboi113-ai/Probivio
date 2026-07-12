@@ -1,3 +1,8 @@
 packages:
   - "apps/*"
   - "packages/*"
+- name: Upload test results to Codecov
+  if: ${{ !cancelled() }}
+  uses: codecov/test-results-action@v1
+  with:
+    token: ${{ secrets.CODECOV_TOKEN }}
