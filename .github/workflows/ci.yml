@@ -135,9 +135,10 @@ jobs:
 
       - name: Install dependencies
         run: pnpm install --no-frozen-lockfile
-
+o
       - name: Build all
         run: pnpm build
         continue-on-error: true
-- name: Codecov
-  uses: codecov/codecov-action@v7.0.0
+        
+        -name: Codecov
+        uses: codecov/codecov-action@v7.
