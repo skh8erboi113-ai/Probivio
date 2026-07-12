@@ -1,10 +1,34 @@
-import type { ApiError } from '@listinglogic/types';
-import type { NextFunction, Request, Response } from 'express';
+import {
+  ConflictError as DbConflictError,
+  DatabaseError,
+  ForbiddenError as DbForbiddenError,
+  NotFoundError as DbNotFoundError,
+  OptimisticLockError,
+  RepositoryError,
+} from '@listinglogic/db';
 
 import { loadConfig } from '../config/config.js';
 import { getLogger } from '../config/logger.js';
 import { captureRequestException } from '../config/sentry.js';
 import { isAppError, InternalError, PayloadTooLargeError, ValidationError } from '../errors/app-errors.js';
+
+import type { ApiError } from '@listinglogic/types';
+import type { NextFunction, Request, Response } from 'express';
+
+/**
+ * `@listinglogic/db` repository errors are a separate hierarchy from
+ * `AppError` (see errors/app-errors.ts) — map them to the same HTTP
+ * status/code shape so a `NotFoundError` thrown by a repository doesn't
+ * fall through to a generic 500.
+ */
+function repositoryErrorStatus(err: RepositoryError): { readonly statusCode: number; readonly code: string } {
+  if (err instanceof DbNotFoundError) return { statusCode: 404, code: 'NOT_FOUND' };
+  if (err instanceof DbForbiddenError) return { statusCode: 403, code: 'FORBIDDEN' };
+  if (err instanceof DbConflictError) return { statusCode: 409, code: 'CONFLICT' };
+  if (err instanceof OptimisticLockError) return { statusCode: 409, code: 'CONFLICT' };
+  if (err instanceof DatabaseError) return { statusCode: 500, code: 'DATABASE_ERROR' };
+  return { statusCode: 500, code: 'DATABASE_ERROR' };
+}
 
 /**
  * Central error handler. MUST be registered last in the middleware chain.
@@ -56,6 +80,18 @@ export function errorHandler(
     return respond(res, req, err);
   }
 
+  // ─── Repository errors (@listinglogic/db) ──────────────────────────────
+  if (err instanceof RepositoryError) {
+    const { statusCode, code } = repositoryErrorStatus(err);
+    if (statusCode >= 500) {
+      logger.error('Repository error (5xx)', { error: err.toJSON(), stack: err.stack, path: req.path });
+      captureRequestException(err, req);
+    } else {
+      logger.info('Repository error (4xx)', { code, message: err.message, path: req.path });
+    }
+    return respond(res, req, { statusCode, code, message: err.message });
+  }
+
   // ─── Unknown errors — treat as 500 ─────────────────────────────────────
   const unknownError = err instanceof Error ? err : new Error(String(err));
   logger.error('Unhandled error', {
@@ -93,27 +129,14 @@ export function notFoundHandler(req: Request, res: Response): void {
   res.status(404).json(body);
 }
 
-function respond(res: Response, req: Request, err: ReturnType<typeof isAppError> extends true ? never : never): void;
-function respond(
-  res: Response,
-  req: Request,
-  err: {
-    readonly statusCode: number;
-    readonly code: string;
-    readonly message: string;
-    readonly details?: Record<string, unknown>;
-  },
-): void;
-function respond(
-  res: Response,
-  req: Request,
-  err: {
-    readonly statusCode: number;
-    readonly code: string;
-    readonly message: string;
-    readonly details?: Record<string, unknown>;
-  },
-): void {
+interface RespondableError {
+  readonly statusCode: number;
+  readonly code: string;
+  readonly message: string;
+  readonly details?: Record<string, unknown> | undefined;
+}
+
+function respond(res: Response, req: Request, err: RespondableError): void {
   const body: ApiError = {
     error: {
       code: err.code as ApiError['error']['code'],

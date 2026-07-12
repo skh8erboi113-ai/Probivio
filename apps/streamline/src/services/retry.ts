@@ -67,7 +67,7 @@ export async function retryWithBackoff<T>(
  * Common predicates for isRetryable.
  */
 export const RetryPredicates = {
-  networkOrServerError(err: unknown): boolean {
+  networkOrServerError: (err: unknown): boolean => {
     if (err instanceof Error) {
       if (err.message.includes('ECONNRESET')) return true;
       if (err.message.includes('ETIMEDOUT')) return true;

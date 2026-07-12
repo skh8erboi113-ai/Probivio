@@ -1,3 +1,19 @@
+import {
+  createLeadSchema,
+  leadFiltersSchema,
+  updateLeadSchema,
+  type CreateLeadPayload,
+  type UpdateLeadPayload,
+} from '@listinglogic/validators';
+import { Router } from 'express';
+
+import { requireAuth } from '../middleware/auth.js';
+import { validate } from '../middleware/validate.js';
+import { stripUndefined } from '../utils/strip-undefined.js';
+
+import type { EventPublisherService } from '../realtime/event-publisher.service.js';
+import type { AgentService } from '../services/agent.service.js';
+import type { ScoringService } from '../services/scoring.service.js';
 import type { LeadRepository } from '@listinglogic/db';
 import type {
   ApiListResponse,
@@ -6,21 +22,11 @@ import type {
   LeadId,
   OperatorId,
 } from '@listinglogic/types';
-import {
-  createLeadSchema,
-  leadFiltersSchema,
-  updateLeadSchema,
-} from '@listinglogic/validators';
-import { Router } from 'express';
-
-import { requireAuth } from '../middleware/auth.js';
-import type { EventPublisherService } from '../realtime/event-publisher.service.js';
-import { validate } from '../middleware/validate.js';
-import type { ScoringService } from '../services/scoring.service.js';
 
 export interface LeadRouterDeps {
   readonly leadRepo: LeadRepository;
   readonly scoringService: ScoringService;
+  readonly agentService: AgentService;
   readonly eventPublisher: EventPublisherService;
 }
 
@@ -80,7 +86,7 @@ export function createLeadRouter(deps: LeadRouterDeps): Router {
 
   router.get('/:id', async (req, res, next) => {
     try {
-      const lead = await deps.leadRepo.findByIdOrThrow(req.operatorId, req.params.id!);
+      const lead = await deps.leadRepo.findByIdOrThrow(req.operatorId, String(req.params.id));
       const body: ApiResponse<Lead> = { data: lead, requestId: req.requestId };
       res.json(body);
     } catch (err) {
@@ -90,7 +96,11 @@ export function createLeadRouter(deps: LeadRouterDeps): Router {
 
   router.post('/', validate({ body: createLeadSchema }), async (req, res, next) => {
     try {
-      const created = await deps.leadRepo.create(req.operatorId, req.body);
+      const payload = req.body as CreateLeadPayload;
+      const created = await deps.leadRepo.create(
+        req.operatorId,
+        stripUndefined(payload) as unknown as Omit<Lead, 'id' | 'operatorId' | 'createdAt' | 'updatedAt'>,
+      );
 
       deps.eventPublisher.publish('lead.created', req.operatorId, {
         leadId: created.id,
@@ -99,6 +109,7 @@ export function createLeadRouter(deps: LeadRouterDeps): Router {
       });
 
       void deps.scoringService.scoreLead(req.operatorId, created.id, 'creation').catch(() => undefined);
+      void deps.agentService.evaluateLead(req.operatorId, created.id, 'lead_created').catch(() => undefined);
 
       const body: ApiResponse<Lead> = {
         data: created,
@@ -113,12 +124,23 @@ export function createLeadRouter(deps: LeadRouterDeps): Router {
 
   router.patch('/:id', validate({ body: updateLeadSchema }), async (req, res, next) => {
     try {
-      const updated = await deps.leadRepo.update(req.operatorId, req.params.id!, req.body);
+      const payload = req.body as UpdateLeadPayload;
+      const updated = await deps.leadRepo.update(
+        req.operatorId,
+        String(req.params.id),
+        stripUndefined(payload) as unknown as Partial<Omit<Lead, 'id' | 'operatorId' | 'createdAt' | 'updatedAt'>>,
+      );
 
       deps.eventPublisher.publish('lead.updated', req.operatorId, {
         leadId: updated.id,
-        changedFields: Object.keys(req.body),
+        changedFields: Object.keys(payload),
       });
+
+      if (payload.status !== undefined) {
+        void deps.agentService
+          .evaluateLead(req.operatorId, updated.id, 'lead_status_changed')
+          .catch(() => undefined);
+      }
 
       const body: ApiResponse<Lead> = {
         data: updated,
@@ -133,10 +155,10 @@ export function createLeadRouter(deps: LeadRouterDeps): Router {
 
   router.delete('/:id', async (req, res, next) => {
     try {
-      await deps.leadRepo.delete(req.operatorId, req.params.id!);
+      await deps.leadRepo.delete(req.operatorId, String(req.params.id));
 
       deps.eventPublisher.publish('lead.deleted', req.operatorId, {
-        leadId: req.params.id!,
+        leadId: String(req.params.id),
       });
 
       res.status(204).send();
@@ -147,11 +169,11 @@ export function createLeadRouter(deps: LeadRouterDeps): Router {
 
   router.post('/:id/score', async (req, res, next) => {
     try {
-      const score = await deps.scoringService.scoreLead(
-        req.operatorId,
-        req.params.id! as LeadId,
-        'manual',
-      );
+      const leadId = String(req.params.id) as LeadId;
+      const score = await deps.scoringService.scoreLead(req.operatorId, leadId, 'manual');
+
+      void deps.agentService.evaluateLead(req.operatorId, leadId, 'lead_scored').catch(() => undefined);
+
       res.json({ data: score, requestId: req.requestId });
     } catch (err) {
       next(err);

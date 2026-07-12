@@ -1,10 +1,11 @@
-import type { Logger } from '@listinglogic/logger';
 
 import { loadConfig } from '../config/config.js';
 import { ExternalApiError, InternalError } from '../errors/app-errors.js';
 
 import { CircuitBreaker } from './circuit-breaker.js';
 import { RetryPredicates, retryWithBackoff } from './retry.js';
+
+import type { Logger } from '@listinglogic/logger';
 
 /**
  * Skip trace service — 3-tier fallback chain per whitepaper spec.
@@ -143,6 +144,7 @@ export class SkipTraceService {
     }
   }
 
+  // eslint-disable-next-line require-await, @typescript-eslint/require-await -- simulated placeholder; will call `httpCall` (async) once a real provider is wired in
   private async callPrimary(input: SkipTraceInput): Promise<SkipTraceResult> {
     // Placeholder for TLOxp / LexisNexis integration.
     // Replace with real API call when credentials are provisioned.
@@ -162,6 +164,7 @@ export class SkipTraceService {
     return simulated;
   }
 
+  // eslint-disable-next-line require-await, @typescript-eslint/require-await -- simulated placeholder; will call a real provider API once wired in
   private async callSecondary(input: SkipTraceInput): Promise<SkipTraceResult> {
     // Placeholder for BeenVerified / Whitepages Pro
     return {
@@ -174,12 +177,19 @@ export class SkipTraceService {
     };
   }
 
+  // eslint-disable-next-line require-await, @typescript-eslint/require-await -- simulated placeholder; will call a real provider API once wired in
   private async callTertiary(_input: SkipTraceInput): Promise<SkipTraceResult> {
     // Public records fallback — very low confidence
     return { ...EMPTY_RESULT, source: 'tertiary', confidence: 0.2 };
   }
 
-  private async httpCall<T>(url: string, body: unknown): Promise<T> {
+  /**
+   * Shared HTTP helper for wiring in a real skip-trace provider (TLOxp,
+   * LexisNexis, BeenVerified, etc). `callPrimary`/`callSecondary` are
+   * simulated placeholders today — swap their bodies to call this method
+   * once real credentials and an API contract are available.
+   */
+  protected async httpCall<T>(url: string, body: unknown): Promise<T> {
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), 10_000);
 

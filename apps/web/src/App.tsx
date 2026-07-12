@@ -5,8 +5,8 @@ import { Navigate, Route, BrowserRouter as Router, Routes } from 'react-router-d
 import { Layout } from './components/Layout';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { RealtimeProvider } from './context/RealtimeContext';
-import { ToastProvider } from './context/ToastContext';
-import { ApiClientError } from './lib/api-client';
+import { ToastProvider, ToastViewport } from './context/ToastContext';
+import { ApiClientError } from './api/client';
 import { AutomationsPage } from './pages/AutomationsPage';
 import { BuyersPage } from './pages/BuyersPage';
 import { DashboardPage } from './pages/DashboardPage';
@@ -66,6 +66,7 @@ export function App() {
               <Route path="/*" element={<ProtectedRoutes />} />
             </Routes>
           </Router>
+          <ToastViewport />
         </ToastProvider>
       </AuthProvider>
       <ReactQueryDevtools initialIsOpen={false} />

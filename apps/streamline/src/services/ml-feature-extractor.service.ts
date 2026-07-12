@@ -1,9 +1,10 @@
+import { PropertyCondition, MotivationLevel } from '@listinglogic/types';
+
 import type {
   InteractionFeatures,
   Lead,
   ScoreHistory,
 } from '@listinglogic/types';
-import { PropertyCondition, MotivationLevel } from '@listinglogic/types';
 
 /**
  * Feature extractor — mirror of services/ml-trainer/ml_trainer/features.py

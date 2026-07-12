@@ -19,6 +19,8 @@ interface Toast {
 interface ToastContextValue {
   readonly toasts: readonly Toast[];
   readonly show: (variant: ToastVariant, message: string, durationMs?: number) => void;
+  /** Alias for `show` — kept for call-site ergonomics (`notify('success', ...)`). */
+  readonly notify: (variant: ToastVariant, message: string, durationMs?: number) => void;
   readonly dismiss: (id: string) => void;
 }
 
@@ -41,7 +43,10 @@ export function ToastProvider({ children }: { readonly children: ReactNode }): J
     [dismiss],
   );
 
-  const value = useMemo(() => ({ toasts, show, dismiss }), [toasts, show, dismiss]);
+  const value = useMemo(
+    () => ({ toasts, show, notify: show, dismiss }),
+    [toasts, show, dismiss],
+  );
 
   return <ToastContext.Provider value={value}>{children}</ToastContext.Provider>;
 }

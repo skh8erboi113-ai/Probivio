@@ -8,7 +8,7 @@ export const Collections = {
   LEADS: 'leads',
   BUYERS: 'buyers',
   PROBATE_CASES: 'probate_cases',
-  AUTOMATIONS: 'automations',
+  AGENT_DECISION_LOGS: 'agent_decision_logs',
   INTERACTIONS: 'interactions',
   SCORE_HISTORY: 'score_history',
   SCORING_WEIGHTS: 'scoring_weights',

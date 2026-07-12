@@ -143,12 +143,12 @@ export const scoreLeadRequestSchema = z.object({
   forceRescore: z.boolean().default(false),
 });
 
-// ─── Send communication request ───────────────────────────────────────────
+// ─── Send communication request (email only — SMS was removed) ───────────
 export const sendCommunicationSchema = z.object({
   leadId: z.string().min(1),
-  channel: z.enum(['sms', 'email']),
+  channel: z.literal('email'),
   templateId: z.string().min(1).max(100),
-  variables: z.record(z.string()).default({}),
+  variables: z.record(z.string(), z.string()).default({}),
 });
 
 // ─── Inferred types (for downstream use) ──────────────────────────────────

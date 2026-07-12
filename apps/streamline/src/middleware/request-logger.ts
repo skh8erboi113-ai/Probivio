@@ -1,6 +1,7 @@
+import { getLogger } from '../config/logger.js';
+
 import type { NextFunction, Request, Response } from 'express';
 
-import { getLogger } from '../config/logger.js';
 
 /**
  * Structured request/response logger.

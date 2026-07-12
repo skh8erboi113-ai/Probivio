@@ -131,8 +131,8 @@ class TrainingDataLoader:
                 "hasContract": False,
             }
 
-        outbound_types = {"sms_sent", "email_sent", "call_made"}
-        inbound_types = {"sms_replied", "email_replied", "call_answered"}
+        outbound_types = {"email_sent", "call_made"}
+        inbound_types = {"email_replied", "call_answered"}
 
         positive = sum(1 for i in interactions if i.get("outcome") == "positive")
         negative = sum(1 for i in interactions if i.get("outcome") == "negative")

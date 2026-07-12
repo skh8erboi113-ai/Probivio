@@ -1,5 +1,6 @@
 import type { Logger } from '@listinglogic/logger';
 import type {
+  IsoTimestamp,
   Lead,
   LeadFilters,
   LeadId,
@@ -83,7 +84,7 @@ export class LeadRepository extends BaseRepository<Lead> {
     leadId: LeadId,
   ): Promise<Lead> {
     return this.update(operatorId, leadId, {
-      lastContactedAt: new Date().toISOString() as ReturnType<typeof this.getTimestamp>,
+      lastContactedAt: this.getTimestamp(),
     });
   }
 
@@ -123,6 +124,20 @@ export class LeadRepository extends BaseRepository<Lead> {
       .where(Fields.STATUS, 'not-in', [LeadStatus.CLOSED_WON, LeadStatus.CLOSED_LOST, LeadStatus.DEAD])
       .orderBy(FieldPath.documentId())
       .orderBy(Fields.SCORE, 'desc')
+      .limit(limit)
+      .get();
+
+    return snap.docs.map((d) => d.data());
+  }
+
+  /**
+   * Find all leads not yet in a terminal state — used by the scheduled
+   * Gemini automation sweep to decide which leads are worth evaluating.
+   */
+  public async findActiveLeads(operatorId: OperatorId, limit = 500): Promise<readonly Lead[]> {
+    const snap = await this.collection
+      .where(Fields.OPERATOR_ID, '==', operatorId)
+      .where(Fields.STATUS, 'not-in', [LeadStatus.CLOSED_WON, LeadStatus.CLOSED_LOST, LeadStatus.DEAD])
       .limit(limit)
       .get();
 
@@ -170,7 +185,7 @@ export class LeadRepository extends BaseRepository<Lead> {
     return ids;
   }
 
-  private getTimestamp() {
-    return new Date().toISOString();
+  private getTimestamp(): IsoTimestamp {
+    return new Date().toISOString() as IsoTimestamp;
   }
 }

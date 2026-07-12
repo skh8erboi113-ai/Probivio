@@ -1,6 +1,6 @@
 {
   "name": "@listinglogic/types",
-  "version": "2.0.0",
+  "version": "2.1.0",
   "private": true,
   "description": "Shared TypeScript domain models for ListingLogic monorepo",
   "type": "module",
@@ -48,6 +48,13 @@
     "clean": "rm -rf dist .turbo *.tsbuildinfo"
   },
   "devDependencies": {
-    "typescript": "^5.3.3"
+    "@typescript-eslint/eslint-plugin": "^8.63.0",
+    "@typescript-eslint/parser": "^8.63.0",
+    "eslint": "^8.57.1",
+    "eslint-import-resolver-typescript": "^3.10.1",
+    "eslint-plugin-import": "^2.32.0",
+    "eslint-plugin-security": "^3.0.1",
+    "typescript": "^5.9.3",
+    "eslint-config-prettier": "^10.1.8"
   }
 }

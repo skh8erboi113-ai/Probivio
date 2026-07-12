@@ -2,6 +2,71 @@ import type { Buyer, Lead, ProbateCase } from '@listinglogic/types';
 
 export const operatorId = 'op_test' as const;
 
+/**
+ * Matches the operator ID the mocked `firebase-admin/auth` (tests/setup.ts)
+ * always returns for any bearer token, regardless of value.
+ */
+export const TEST_OPERATOR_ID = operatorId;
+
+/** Authorization header accepted by the mocked Firebase auth in every test run. */
+export const makeAuthHeader = (): { readonly Authorization: string } => ({
+  Authorization: 'Bearer op_test',
+});
+
+export const makeCreateLeadInput = (overrides?: Record<string, unknown>): Record<string, unknown> => ({
+  contact: {
+    firstName: 'Jane',
+    lastName: 'Doe',
+    email: 'jane@example.com',
+    phone: '+15551234567',
+  },
+  property: {
+    address: '123 Main St',
+    city: 'Austin',
+    state: 'TX',
+    zip: '78701',
+  },
+  metrics: {
+    estimatedValue: 200000,
+    askingPrice: 150000,
+    arv: 240000,
+    repairEstimate: 20000,
+  },
+  source: 'probate',
+  status: 'new',
+  motivation: 'high',
+  tags: [],
+  ...overrides,
+});
+
+export const makeCreateBuyerInput = (overrides?: Record<string, unknown>): Record<string, unknown> => ({
+  firstName: 'Bob',
+  lastName: 'Smith',
+  email: 'bob@acme.com',
+  type: 'cash',
+  status: 'active',
+  buyBox: {
+    states: ['TX'],
+    cities: ['Austin'],
+    zipCodes: [],
+    minBeds: 2,
+    maxBeds: 5,
+    minBaths: 1,
+    maxBaths: 4,
+    minSqft: 1000,
+    maxSqft: 4000,
+    minPrice: 5_000_000,
+    maxPrice: 50_000_000,
+    propertyTypes: ['Single Family'],
+    strategies: ['fix_and_flip'],
+    excludedZips: [],
+  },
+  closingTimeline: 14,
+  proofOfFundsVerified: true,
+  tags: [],
+  ...overrides,
+});
+
 export const makeLead = (overrides?: Partial<Lead>): Lead =>
   ({
     id: 'lead_1' as any,

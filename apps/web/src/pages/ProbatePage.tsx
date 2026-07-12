@@ -1,6 +1,5 @@
 import { useState } from 'react';
 
-import { Button } from '../components/ui/Button';
 import { Card } from '../components/ui/Card';
 import { useToast } from '../context/ToastContext';
 import { probateApi } from '../api/probate.api';

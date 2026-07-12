@@ -1,8 +1,11 @@
-import type { Logger } from '@listinglogic/logger';
 import { Router } from 'express';
 
 import { UnauthorizedError } from '../errors/app-errors.js';
-import type { AutomationService } from '../services/automation.service.js';
+
+
+import type { AgentService } from '../services/agent.service.js';
+import type { Logger } from '@listinglogic/logger';
+import type { OperatorId, LeadId } from '@listinglogic/types';
 
 /**
  * Callback endpoints invoked by Cloud Tasks when scheduled work fires.
@@ -13,7 +16,7 @@ import type { AutomationService } from '../services/automation.service.js';
  */
 
 export interface TaskCallbackDeps {
-  readonly automationService: AutomationService;
+  readonly agentService: AgentService;
   readonly logger: Logger;
 }
 
@@ -32,24 +35,27 @@ export function createTaskCallbackRouter(deps: TaskCallbackDeps): Router {
     next();
   });
 
-  router.post('/execute-automation-action', async (req, res, next) => {
+  // Fired by a delayed Cloud Task (e.g. a `schedule_follow_up` decision) to
+  // re-run the Gemini agent against a lead at the scheduled follow-up time.
+  router.post('/evaluate-lead', async (req, res, next) => {
     try {
       const body = req.body as {
         readonly operatorId: string;
-        readonly automationId: string;
-        readonly actionIndex: number;
         readonly leadId: string;
       };
 
-      deps.logger.info('Executing scheduled automation action', {
+      deps.logger.info('Executing scheduled agent evaluation', {
         operatorId: body.operatorId,
-        automationId: body.automationId,
-        actionIndex: body.actionIndex,
+        leadId: body.leadId,
       });
 
-      // Wire this into automationService.executeSingleAction() in a follow-up.
-      // For now, log and return 200 so Cloud Tasks doesn't retry.
-      res.json({ received: true });
+      const decision = await deps.agentService.evaluateLead(
+        body.operatorId as OperatorId,
+        body.leadId as LeadId,
+        'scheduled_sweep',
+      );
+
+      res.json({ received: true, action: decision.action.type, executed: decision.executed });
     } catch (err) {
       next(err);
     }

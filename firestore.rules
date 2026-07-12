@@ -64,13 +64,11 @@ service cloud.firestore {
       allow delete: if ownsResource(resource) || isAdmin();
     }
 
-    // ─── Automations ──────────────────────────────────────────
-    match /automations/{automationId} {
+    // ─── Agent decision logs (Gemini automation audit trail) ──
+    match /agent_decision_logs/{decisionId} {
       allow read: if ownsResource(resource) || isAdmin();
-      allow create: if willOwnResource()
-                    && hasRequiredFields(['operatorId', 'name', 'trigger', 'actions']);
-      allow update: if ownsResource(resource);
-      allow delete: if ownsResource(resource) || isAdmin();
+      // Only server writes decision logs — immutable audit trail
+      allow write: if false;
     }
 
     // ─── Interactions (ML feedback loop) ──────────────────────

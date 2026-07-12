@@ -1,12 +1,14 @@
-import type { Logger } from '@listinglogic/logger';
-import type { ProbateExtractionResult, ScoreResult } from '@listinglogic/types';
 import { GoogleGenerativeAI, type GenerativeModel } from '@google/generative-ai';
+import { agentDecisionSchema, type AgentDecisionPayload } from '@listinglogic/validators';
 
 import { loadConfig } from '../config/config.js';
 import { ExternalApiError, InternalError } from '../errors/app-errors.js';
 
 import { CircuitBreaker } from './circuit-breaker.js';
 import { RetryPredicates, retryWithBackoff } from './retry.js';
+
+import type { Logger } from '@listinglogic/logger';
+import type { AgentTrigger, InteractionFeatures, Lead, ProbateExtractionResult } from '@listinglogic/types';
 
 /**
  * Gemini AI wrapper with:
@@ -127,7 +129,7 @@ export class GeminiService {
             raw &&
             typeof raw === 'object' &&
             'explanation' in raw &&
-            typeof (raw as { explanation: unknown }).explanation === 'string'
+            typeof (raw).explanation === 'string'
           ) {
             return raw as { readonly explanation: string };
           }
@@ -144,7 +146,7 @@ export class GeminiService {
   /**
    * Extract structured probate case data from PDF text.
    */
-  public async extractProbateData(pdfText: string): Promise<ProbateExtractionResult> {
+  public extractProbateData(pdfText: string): Promise<ProbateExtractionResult> {
     if (!this.model) throw new InternalError('Gemini required for probate extraction', undefined, true);
 
     // Truncate to protect against prompt-injection via massive documents
@@ -167,6 +169,72 @@ export class GeminiService {
       (raw) => {
         if (!raw || typeof raw !== 'object') throw new Error('Invalid extraction shape');
         return raw as ProbateExtractionResult;
+      },
+    );
+  }
+
+  /**
+   * Core of the automation decision engine: Gemini looks at a lead's full
+   * context and decides the single next action to take (or explicitly
+   * decides to do nothing). The raw response is validated against
+   * `agentDecisionSchema` — the closed action whitelist — before being
+   * returned. Any output outside that whitelist throws and the caller
+   * (AgentService) treats the decision as failed, never executing anything.
+   */
+  public decideNextAction(context: {
+    readonly lead: Lead;
+    readonly interactionSummary: InteractionFeatures;
+    readonly trigger: AgentTrigger;
+  }): Promise<AgentDecisionPayload> {
+    if (!this.model) throw new InternalError('Gemini required for automation decisions', undefined, true);
+
+    const { lead, interactionSummary, trigger } = context;
+
+    const leadSummary = {
+      status: lead.status,
+      source: lead.source,
+      motivation: lead.motivation,
+      score: lead.score ?? null,
+      scoreConfidence: lead.scoreConfidence ?? null,
+      tags: lead.tags,
+      hasEmail: Boolean(lead.contact.email),
+      property: `${lead.property.city}, ${lead.property.state}`,
+      dealMetrics: lead.metrics,
+      daysSinceLastContact: interactionSummary.daysSinceLastContact,
+      totalInteractions: interactionSummary.totalInteractions,
+      responseRate: interactionSummary.responseRate,
+      hasAppointment: interactionSummary.hasAppointment,
+      hasOffer: interactionSummary.hasOffer,
+      hasContract: interactionSummary.hasContract,
+      notes: lead.notes?.slice(0, 2000) ?? null,
+    };
+
+    return this.generateJson<AgentDecisionPayload>(
+      {
+        systemInstruction:
+          'You are the autonomous follow-up agent for a real-estate wholesaling CRM. ' +
+          `An event just occurred for this lead: "${trigger}". ` +
+          'Decide the SINGLE best next action, or decide to do nothing. ' +
+          'You may ONLY return one of these action shapes (no other fields, no additional actions): ' +
+          '{"type":"send_email","subject":string,"body":string} — write a short, honest, non-pushy email; ' +
+          '{"type":"add_tag","tag":string} | {"type":"remove_tag","tag":string} — lowercase, single word or hyphenated; ' +
+          '{"type":"change_status","status":"new"|"contacted"|"qualified"|"under_contract"|"closed_lost"|"dead"} ' +
+          '(you may NEVER set status to "closed_won" — only a human closes deals); ' +
+          '{"type":"schedule_follow_up","inDays":number,"note":string}; ' +
+          '{"type":"no_action"} — use this whenever no clear action is warranted right now. ' +
+          'Never fabricate facts not present in the lead data. Never use pressure tactics, guarantees, ' +
+          'or urgency language in emails. Respond with ONLY this JSON shape: ' +
+          '{"reasoning": string (max 1000 chars, explain your decision), "action": <one action object above>}.',
+        userPrompt: `LEAD CONTEXT:\n${JSON.stringify(leadSummary, null, 2)}`,
+        maxOutputTokens: 800,
+        temperature: 0.3,
+      },
+      (raw) => {
+        const parsed = agentDecisionSchema.safeParse(raw);
+        if (!parsed.success) {
+          throw new Error(`Gemini decision failed whitelist validation: ${parsed.error.message}`);
+        }
+        return parsed.data;
       },
     );
   }
@@ -197,7 +265,9 @@ export class GeminiService {
    */
   private sanitizePrompt(prompt: string): string {
     return prompt
+      // eslint-disable-next-line no-control-regex -- intentional: stripping control chars for prompt-injection defense
       .replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/g, '')
+      // eslint-disable-next-line security/detect-unsafe-regex -- bounded quantifiers, not user-controlled pattern, no catastrophic backtracking
       .replace(/ignore\s+(all\s+)?previous\s+(instructions|prompts)/gi, '[FILTERED]')
       .replace(/system\s*:\s*/gi, '[FILTERED]:')
       .replace(/```/g, '')

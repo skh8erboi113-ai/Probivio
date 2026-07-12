@@ -7,7 +7,7 @@ export abstract class RepositoryError extends Error {
   public abstract readonly code: string;
   public override readonly name: string;
 
-  constructor(message: string, public readonly cause?: unknown) {
+  constructor(message: string, public override readonly cause?: unknown) {
     super(message);
     this.name = this.constructor.name;
 

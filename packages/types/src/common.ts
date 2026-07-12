@@ -1,9 +1,40 @@
-import type { IsoTimestamp, OperatorId } from './branded.js';
+import type { IsoTimestamp, OperatorId, ZipCode } from './branded.js';
+
+export type {
+  AutomationId,
+  BuyerId,
+  CorrelationId,
+  E164Phone,
+  InteractionId,
+  IsoTimestamp,
+  LeadId,
+  OperatorId,
+  ProbateCaseId,
+  ScoreHistoryId,
+  UsStateCode,
+} from './branded.js';
+
+/**
+ * US ZIP code — alias kept for backwards-compatible naming across the codebase.
+ * Prefer `ZipCode` (from `./branded.js`) in new code.
+ */
+export type UsZipCode = ZipCode;
 
 /** Base entity — every persisted document extends this. */
 export interface BaseEntity {
   readonly id: string;
   readonly operatorId: OperatorId;
+  readonly createdAt: IsoTimestamp;
+  readonly updatedAt: IsoTimestamp;
+}
+
+/** Every operator-scoped domain entity carries the owning operator's ID. */
+export interface OperatorScoped {
+  readonly operatorId: OperatorId;
+}
+
+/** Standard created/updated audit timestamps shared by all persisted entities. */
+export interface AuditFields {
   readonly createdAt: IsoTimestamp;
   readonly updatedAt: IsoTimestamp;
 }

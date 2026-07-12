@@ -1,12 +1,8 @@
-import type { Logger } from '@listinglogic/logger';
 import { Redis } from 'ioredis';
 
 import { getConfig } from './config.js';
 
-/**
- * Redis client factory with connection pooling and health checks.
- * Returns null if Redis is not configured — callers must handle gracefully.
- */
+import type { Logger } from '@listinglogic/logger';
 
 let cached: Redis | null = null;
 
@@ -14,12 +10,12 @@ export function getRedis(logger?: Logger): Redis | null {
   if (cached) return cached;
 
   const cfg = getConfig();
-  if (!cfg.REDIS_URL) {
+  if (!cfg.infrastructure.redis.url) {
     logger?.warn('REDIS_URL not set — Redis features disabled');
     return null;
   }
 
-  cached = new Redis(cfg.REDIS_URL, {
+  cached = new Redis(cfg.infrastructure.redis.url, {
     lazyConnect: false,
     maxRetriesPerRequest: 3,
     enableReadyCheck: true,
@@ -41,4 +37,7 @@ export function getRedis(logger?: Logger): Redis | null {
   cached.on('connect', () => logger?.info('Redis connected'));
   cached.on('ready', () => logger?.info('Redis ready'));
   cached.on('error', (err) => logger?.error('Redis error', { error: err.message }));
-  cached.on('close', () => 
+  cached.on('close', () => logger?.warn('Redis connection closed'));
+
+  return cached;
+}

@@ -1,4 +1,3 @@
-import type { Logger } from '@listinglogic/logger';
 import sgMail from '@sendgrid/mail';
 
 import { loadConfig } from '../config/config.js';
@@ -6,6 +5,8 @@ import { ExternalApiError, InternalError } from '../errors/app-errors.js';
 
 import { CircuitBreaker } from './circuit-breaker.js';
 import { RetryPredicates, retryWithBackoff } from './retry.js';
+
+import type { Logger } from '@listinglogic/logger';
 
 export interface EmailResult {
   readonly messageId: string | undefined;
@@ -45,7 +46,7 @@ export class SendGridService {
     return this.enabled && this.fromEmail !== null;
   }
 
-  public async sendEmail(input: {
+  public sendEmail(input: {
     readonly to: string;
     readonly subject: string;
     readonly text: string;
@@ -55,13 +56,15 @@ export class SendGridService {
     if (input.subject.length > 200) throw new InternalError('Subject too long', undefined, true);
     if (input.text.length > 100_000) throw new InternalError('Email body too long', undefined, true);
 
+    const fromEmail = this.fromEmail;
+
     return this.circuit.execute(() =>
       retryWithBackoff(
         async () => {
           try {
             const [response] = await sgMail.send({
               to: input.to,
-              from: this.fromEmail!,
+              from: fromEmail,
               subject: input.subject,
               text: input.text,
               ...(input.html && { html: input.html }),
@@ -71,15 +74,18 @@ export class SendGridService {
               },
             });
 
+            const headers = response.headers as Record<string, string | undefined>;
+            const messageId = headers['x-message-id'];
+
             this.logger.info('Email sent', {
               statusCode: response.statusCode,
-              messageId: response.headers['x-message-id'],
+              messageId,
               to: this.maskEmail(input.to),
             });
 
             return {
               statusCode: response.statusCode,
-              messageId: response.headers['x-message-id'] as string | undefined,
+              messageId,
             };
           } catch (err) {
             throw new ExternalApiError('sendgrid', err);

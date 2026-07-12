@@ -18,7 +18,7 @@ export type RealtimeEventType =
   | 'buyer.created'
   | 'buyer.updated'
   | 'interaction.recorded'
-  | 'automation.triggered';
+  | 'agent.decision';
 
 export interface RealtimeEvent<TPayload = unknown> {
   readonly type: RealtimeEventType;

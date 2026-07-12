@@ -1,9 +1,11 @@
-import type { Logger } from '@listinglogic/logger';
 import { CloudTasksClient } from '@google-cloud/tasks';
-import type { protos } from '@google-cloud/tasks';
+
 
 import { loadConfig } from '../config/config.js';
 import { ExternalApiError } from '../errors/app-errors.js';
+
+import type { protos } from '@google-cloud/tasks';
+import type { Logger } from '@listinglogic/logger';
 
 /**
  * Cloud Tasks queue wrapper for durable, delayed automation actions.
@@ -136,7 +138,7 @@ export class TaskQueueService {
     }
   }
 
-  private async executeInProcess(task: QueuedTask): Promise<string> {
+  private executeInProcess(task: QueuedTask): Promise<string> {
     const delay = task.scheduleAt ? Math.max(0, task.scheduleAt.getTime() - Date.now()) : 0;
 
     if (delay > 60_000) {
@@ -144,14 +146,14 @@ export class TaskQueueService {
         url: task.url,
         delayMs: delay,
       });
-      return 'dropped:in-process-limit';
+      return Promise.resolve('dropped:in-process-limit');
     }
 
     setTimeout(() => {
       void fetch(task.url, {
         method: task.method ?? 'POST',
         headers: { 'Content-Type': 'application/json', ...task.headers },
-        body: task.payload !== undefined ? JSON.stringify(task.payload) : undefined,
+        ...(task.payload !== undefined && { body: JSON.stringify(task.payload) }),
       }).catch((err) => {
         this.logger.error('In-process task execution failed', {
           url: task.url,
@@ -160,7 +162,7 @@ export class TaskQueueService {
       });
     }, delay);
 
-    return `in-process:${crypto.randomUUID()}`;
+    return Promise.resolve(`in-process:${crypto.randomUUID()}`);
   }
 }
 

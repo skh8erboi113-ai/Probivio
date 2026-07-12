@@ -28,23 +28,16 @@ export default defineConfig({
     minify: 'esbuild',
     rollupOptions: {
       output: {
-        manualChunks: {
-          'react-vendor': ['react', 'react-dom', 'react-router-dom'],
-          'query-vendor': ['@tanstack/react-query'],
-          'firebase-vendor': ['firebase/app', 'firebase/auth'],
-          'charts-vendor': ['recharts'],
+        manualChunks: (id: string): string | undefined => {
+          if (id.includes('node_modules')) {
+            if (/react-router-dom|\/react\/|\/react-dom\//.test(id)) return 'react-vendor';
+            if (id.includes('@tanstack/react-query')) return 'query-vendor';
+            if (id.includes('firebase')) return 'firebase-vendor';
+            if (id.includes('recharts')) return 'charts-vendor';
+          }
+          return undefined;
         },
       },
-    },
-  },
-  test: {
-    globals: true,
-    environment: 'jsdom',
-    setupFiles: ['./src/test/setup.ts'],
-    coverage: {
-      provider: 'v8',
-      reporter: ['text', 'html', 'lcov'],
-      exclude: ['node_modules', 'dist', '**/*.test.tsx', '**/*.d.ts'],
     },
   },
 });

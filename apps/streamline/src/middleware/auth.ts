@@ -1,10 +1,13 @@
-import type { OperatorId } from '@listinglogic/types';
-import type { NextFunction, Request, Response } from 'express';
+import { updateContext } from '@listinglogic/logger';
 import { getAuth } from 'firebase-admin/auth';
 
 import { getLogger } from '../config/logger.js';
 import { UnauthorizedError } from '../errors/app-errors.js';
-import { updateContext } from '@listinglogic/logger';
+
+import type { OperatorId } from '@listinglogic/types';
+import type { NextFunction, Request, Response } from 'express';
+
+
 
 /**
  * Firebase ID Token verification.

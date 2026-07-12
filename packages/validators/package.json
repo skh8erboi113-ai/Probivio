@@ -1,8 +1,8 @@
 {
   "name": "@listinglogic/validators",
-  "version": "0.1.0",
+  "version": "1.0.0",
   "private": true,
-  "description": "Zod validation schemas — single source of truth for input validation",
+  "description": "Zod validation schemas \u2014 single source of truth for input validation",
   "type": "module",
   "main": "./src/index.ts",
   "types": "./src/index.ts",
@@ -22,14 +22,18 @@
   },
   "dependencies": {
     "@listinglogic/types": "workspace:*",
-    "zod": "^3.22.4"
+    "zod": "^4.4.3"
   },
   "devDependencies": {
-    "@typescript-eslint/eslint-plugin": "^7.1.0",
-    "@typescript-eslint/parser": "^7.1.0",
-    "@vitest/coverage-v8": "^1.3.1",
-    "eslint": "^8.57.0",
-    "typescript": "^5.3.3",
-    "vitest": "^1.3.1"
+    "@typescript-eslint/eslint-plugin": "^8.63.0",
+    "@typescript-eslint/parser": "^8.63.0",
+    "@vitest/coverage-v8": "^4.1.10",
+    "eslint": "^8.57.1",
+    "eslint-import-resolver-typescript": "^3.10.1",
+    "eslint-plugin-import": "^2.32.0",
+    "eslint-plugin-security": "^3.0.1",
+    "typescript": "^5.9.3",
+    "vitest": "^4.1.10",
+    "eslint-config-prettier": "^10.1.8"
   }
 }

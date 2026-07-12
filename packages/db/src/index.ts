@@ -47,8 +47,11 @@ export type { BuyerFilters, BuyerListOptions } from './buyer.repository.js';
 export { ProbateRepository } from './probate.repository.js';
 export type { ProbateFilters, ProbateListOptions } from './probate.repository.js';
 
-export { AutomationRepository } from './automation.repository.js';
-export type { AutomationFilters, AutomationListOptions } from './automation.repository.js';
+export { AgentDecisionLogRepository } from './agent-decision-log.repository.js';
+export type {
+  AgentDecisionLogFilters,
+  AgentDecisionLogListOptions,
+} from './agent-decision-log.repository.js';
 
 export { InteractionRepository } from './interaction.repository.js';
 

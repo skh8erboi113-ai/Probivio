@@ -1,4 +1,5 @@
 import { generateRequestId, withContext } from '@listinglogic/logger';
+
 import type { NextFunction, Request, Response } from 'express';
 
 /**

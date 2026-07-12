@@ -1,86 +1,63 @@
 import type {
   AuditFields,
   AutomationId,
-  IsoTimestamp,
+  LeadId,
   OperatorScoped,
 } from './common.js';
 import type { LeadStatus } from './lead.js';
 
-export const AutomationTrigger = {
+/**
+ * Events that cause the Gemini decision engine to evaluate a lead.
+ * Unlike the old rule-based engine, these don't map 1:1 to actions —
+ * they just tell the agent "something happened, decide what (if anything)
+ * to do about it now."
+ */
+export const AgentTrigger = {
   LEAD_CREATED: 'lead_created',
   LEAD_STATUS_CHANGED: 'lead_status_changed',
   LEAD_SCORED: 'lead_scored',
-  SCORE_ABOVE_THRESHOLD: 'score_above_threshold',
-  NO_CONTACT_FOR_DAYS: 'no_contact_for_days',
-  TAG_ADDED: 'tag_added',
+  INTERACTION_RECORDED: 'interaction_recorded',
+  SCHEDULED_SWEEP: 'scheduled_sweep',
   MANUAL: 'manual',
-  SCHEDULED: 'scheduled',
 } as const;
-export type AutomationTrigger = (typeof AutomationTrigger)[keyof typeof AutomationTrigger];
+export type AgentTrigger = (typeof AgentTrigger)[keyof typeof AgentTrigger];
 
-export const ActionType = {
-  SEND_SMS: 'send_sms',
-  SEND_EMAIL: 'send_email',
-  SEND_TELEGRAM: 'send_telegram',
-  ADD_TAG: 'add_tag',
-  REMOVE_TAG: 'remove_tag',
-  CHANGE_STATUS: 'change_status',
-  ASSIGN_TO: 'assign_to',
-  CREATE_TASK: 'create_task',
-  WEBHOOK: 'webhook',
-  WAIT: 'wait',
-} as const;
-export type ActionType = (typeof ActionType)[keyof typeof ActionType];
+/**
+ * The complete, closed set of actions Gemini is allowed to take on a lead.
+ *
+ * This whitelist is enforced in code (packages/validators' agentDecisionSchema
+ * plus a runtime allow-list check in the agent service) — Gemini's raw output
+ * is never executed directly. If the model asks for anything outside this
+ * union, the decision is rejected and logged, never run.
+ */
+export type AgentAction =
+  | { readonly type: 'send_email'; readonly subject: string; readonly body: string }
+  | { readonly type: 'add_tag'; readonly tag: string }
+  | { readonly type: 'remove_tag'; readonly tag: string }
+  | { readonly type: 'change_status'; readonly status: LeadStatus }
+  | { readonly type: 'schedule_follow_up'; readonly inDays: number; readonly note: string }
+  | { readonly type: 'no_action' };
 
-// ─── Trigger conditions (discriminated union) ─────────────────────────────
-export type TriggerConditions =
-  | { readonly type: 'lead_created'; readonly source?: string }
-  | { readonly type: 'lead_status_changed'; readonly fromStatus?: LeadStatus; readonly toStatus: LeadStatus }
-  | { readonly type: 'lead_scored' }
-  | { readonly type: 'score_above_threshold'; readonly threshold: number }
-  | { readonly type: 'no_contact_for_days'; readonly days: number }
-  | { readonly type: 'tag_added'; readonly tag: string }
-  | { readonly type: 'manual' }
-  | { readonly type: 'scheduled'; readonly cron: string };
+export type AgentActionType = AgentAction['type'];
 
-// ─── Action definitions (discriminated union) ─────────────────────────────
-export interface BaseAction {
-  readonly id: string;
-  readonly delayMinutes: number;
-}
-
-export type AutomationAction =
-  | (BaseAction & { readonly type: 'send_sms'; readonly templateId: string; readonly toField: 'phone' | 'alternatePhone' })
-  | (BaseAction & { readonly type: 'send_email'; readonly templateId: string; readonly subject: string })
-  | (BaseAction & { readonly type: 'send_telegram'; readonly chatId: string; readonly message: string })
-  | (BaseAction & { readonly type: 'add_tag'; readonly tag: string })
-  | (BaseAction & { readonly type: 'remove_tag'; readonly tag: string })
-  | (BaseAction & { readonly type: 'change_status'; readonly status: LeadStatus })
-  | (BaseAction & { readonly type: 'assign_to'; readonly operatorId: string })
-  | (BaseAction & { readonly type: 'create_task'; readonly title: string; readonly dueInDays: number })
-  | (BaseAction & { readonly type: 'webhook'; readonly url: string; readonly method: 'POST' | 'PUT' })
-  | (BaseAction & { readonly type: 'wait'; readonly durationMinutes: number });
-
-export interface Automation extends OperatorScoped, AuditFields {
+/**
+ * Immutable audit record of one Gemini decision cycle for one lead.
+ * Written for every evaluation — including "no_action" — so operators can
+ * see exactly what the AI considered and why, not just what it did.
+ */
+export interface AgentDecisionLog extends OperatorScoped, AuditFields {
   readonly id: AutomationId;
-  readonly name: string;
-  readonly description?: string;
-  readonly trigger: AutomationTrigger;
-  readonly conditions: TriggerConditions;
-  readonly actions: readonly AutomationAction[];
-  readonly isActive: boolean;
-  readonly runCount: number;
-  readonly successCount: number;
-  readonly failureCount: number;
-  readonly lastRunAt?: IsoTimestamp;
-  readonly lastError?: string;
+  readonly leadId: LeadId;
+  readonly trigger: AgentTrigger;
+  readonly action: AgentAction;
+  readonly reasoning: string;
+  readonly executed: boolean;
+  /** Set when `executed` is false — guardrail name or error that blocked the action. */
+  readonly blockedReason?: string;
+  readonly modelVersion: string;
 }
 
-export type CreateAutomationInput = Omit<
-  Automation,
-  'id' | 'operatorId' | 'runCount' | 'successCount' | 'failureCount' | 'lastRunAt' | 'lastError' | 'createdAt' | 'updatedAt'
->;
-
-export type UpdateAutomationInput = Partial<
-  Omit<Automation, 'id' | 'operatorId' | 'createdAt' | 'updatedAt'>
+export type CreateAgentDecisionLogInput = Omit<
+  AgentDecisionLog,
+  'id' | 'operatorId' | 'createdAt' | 'updatedAt'
 >;

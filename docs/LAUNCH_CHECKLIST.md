@@ -15,6 +15,19 @@ Complete before promoting to production. Every item is blocking.
 - [ ] No hardcoded secrets (CodeQL scan clean)
 - [ ] Dependencies audited (`pnpm audit --audit-level=high` clean)
 
+## AI Automation Agent (Gemini)
+
+- [ ] `AUTOMATION_MAX_EMAILS_PER_LEAD_PER_DAY` set to a sane value (default 1)
+- [ ] Confirmed the agent's action whitelist matches `agentActionSchema` exactly — no way for
+      Gemini to invoke anything outside `send_email` / `add_tag` / `remove_tag` / `change_status`
+      (never `closed_won`) / `schedule_follow_up` / `no_action`
+- [ ] Spot-checked `agent_decision_logs` for a sample of operators — reasoning is coherent,
+      no injected instructions leaking through from lead notes/interaction metadata
+- [ ] Confirmed `/scheduler/agent-sweep` and `/tasks/evaluate-lead` reject requests without the
+      shared secret header
+- [ ] Ops alert wired for repeated `execution_error` blocked-reasons (signals a systemic issue,
+      not just one bad decision)
+
 ## Security
 
 - [ ] Firestore rules deployed and tested (cross-tenant queries denied)
@@ -53,7 +66,6 @@ Complete before promoting to production. Every item is blocking.
 ## Integrations
 
 - [ ] Gemini API key rotated from any dev key
-- [ ] Twilio phone number verified + branded (A2P 10DLC registered)
 - [ ] SendGrid domain authenticated (SPF + DKIM + DMARC)
 - [ ] Sentry sample rate set to 0.1 in production
 - [ ] Cloud Tasks queue live and processing a test task
@@ -100,10 +112,9 @@ Complete before promoting to production. Every item is blocking.
 - [ ] Terms of Service updated with data collection scope
 - [ ] Privacy Policy updated with third-party data processors listed:
   - Google (Firebase, Gemini, Cloud Run)
-  - Twilio
   - SendGrid
   - Sentry
-- [ ] TCPA consent language on signup verified with counsel
+- [ ] CAN-SPAM compliance (unsubscribe link, physical address) verified for AI-generated emails
 - [ ] DPA (Data Processing Agreement) signed with each processor
 - [ ] Data retention policy documented and implemented
 

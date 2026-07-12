@@ -49,9 +49,14 @@ export function RealtimeProvider({ children }: { readonly children: ReactNode })
           }
           break;
         }
-        case 'automation.triggered':
-          queryClient.invalidateQueries({ queryKey: ['automations'] });
+        case 'agent.decision': {
+          const payload = event.payload as { readonly leadId?: string } | null;
+          queryClient.invalidateQueries({ queryKey: ['agent', 'decisions'] });
+          if (payload?.leadId) {
+            queryClient.invalidateQueries({ queryKey: ['leads', 'detail', payload.leadId] });
+          }
           break;
+        }
         default:
           break;
       }

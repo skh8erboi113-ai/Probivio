@@ -1,11 +1,12 @@
-import type { IncomingMessage, Server as HttpServer } from 'node:http';
-import type { Duplex } from 'node:stream';
 
-import type { Logger } from '@listinglogic/logger';
 import { getAuth } from 'firebase-admin/auth';
 import { WebSocketServer, WebSocket } from 'ws';
 
 import { getPubSub, type RealtimeEvent } from './pubsub.js';
+
+import type { Logger } from '@listinglogic/logger';
+import type { IncomingMessage, Server as HttpServer } from 'node:http';
+import type { Duplex } from 'node:stream';
 
 /**
  * WebSocket server for real-time client updates.
@@ -51,7 +52,7 @@ export class RealtimeWebSocketServer {
     });
 
     this.wss.on('connection', (ws, req) => {
-      this.handleConnection(ws as AuthedSocket, req);
+      void this.handleConnection(ws as AuthedSocket, req);
     });
 
     this.pingInterval = setInterval(() => {
@@ -98,8 +99,14 @@ export class RealtimeWebSocketServer {
   }
 
   private handleUpgrade(req: IncomingMessage, socket: Duplex, head: Buffer): void {
-    if (!this.wss) return socket.destroy();
-    if (!req.url?.startsWith(PATH)) return socket.destroy();
+    if (!this.wss) {
+      socket.destroy();
+      return;
+    }
+    if (!req.url?.startsWith(PATH)) {
+      socket.destroy();
+      return;
+    }
 
     this.wss.handleUpgrade(req, socket, head, (ws) => {
       this.wss?.emit('connection', ws, req);
@@ -172,7 +179,11 @@ export class RealtimeWebSocketServer {
     // Handle incoming messages (mostly ping/pong style)
     ws.on('message', (data) => {
       try {
-        const text = data.toString();
+        const text = Buffer.isBuffer(data)
+          ? data.toString('utf8')
+          : Array.isArray(data)
+            ? Buffer.concat(data).toString('utf8')
+            : Buffer.from(data).toString('utf8');
         if (text.length > 1024) {
           ws.close(1009, 'Message too large');
           return;

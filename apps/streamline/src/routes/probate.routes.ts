@@ -1,12 +1,13 @@
-import type { ProbateRepository } from '@listinglogic/db';
-import type { ApiResponse, ProbateCase } from '@listinglogic/types';
 import { scanProbatePdfSchema } from '@listinglogic/validators';
 import { Router } from 'express';
 
 import { requireAuth } from '../middleware/auth.js';
 import { aiRateLimiter } from '../middleware/rate-limit.js';
 import { validate } from '../middleware/validate.js';
+
 import type { ProbateService } from '../services/probate.service.js';
+import type { ProbateRepository } from '@listinglogic/db';
+import type { ApiResponse, ProbateCase } from '@listinglogic/types';
 
 export interface ProbateRouterDeps {
   readonly probateRepo: ProbateRepository;
@@ -44,7 +45,7 @@ export function createProbateRouter(deps: ProbateRouterDeps): Router {
 
   router.get('/:id', async (req, res, next) => {
     try {
-      const found = await deps.probateRepo.findByIdOrThrow(req.operatorId, req.params.id!);
+      const found = await deps.probateRepo.findByIdOrThrow(req.operatorId, String(req.params.id));
       res.json({ data: found, requestId: req.requestId });
     } catch (err) {
       next(err);

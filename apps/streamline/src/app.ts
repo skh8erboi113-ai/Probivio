@@ -2,12 +2,7 @@ import express, { type Application, type Router } from 'express';
 
 import { loadConfig } from './config/config.js';
 import { getLogger } from './config/logger.js';
-import {
-  initializeSentry,
-  sentryErrorHandler,
-  sentryRequestHandler,
-  sentryTracingHandler,
-} from './config/sentry.js';
+import { attachSentryErrorHandler, initializeSentry } from './config/sentry.js';
 import { errorHandler, notFoundHandler } from './middleware/error-handler.js';
 import { globalRateLimiter } from './middleware/rate-limit.js';
 import { requestContextMiddleware } from './middleware/request-context.js';
@@ -25,7 +20,7 @@ export interface CreateAppOptions {
  * Express app factory.
  *
  * Middleware order matters:
- *   1. Sentry request handler (captures early errors)
+ *   1. Sentry init (request isolation is automatic via httpIntegration in v10)
  *   2. Request context (requestId, async storage)
  *   3. Security (Helmet, CORS, compression)
  *   4. Body parsers (with 5MB limit)
@@ -46,10 +41,8 @@ export function createApp(options: CreateAppOptions): Application {
   app.set('trust proxy', 1);
   app.disable('x-powered-by');
 
-  // ─── Sentry — must be first ────────────────────────────────────────────
-  initializeSentry(app);
-  app.use(sentryRequestHandler());
-  app.use(sentryTracingHandler());
+  // ─── Sentry — must be initialized before anything else ─────────────────
+  initializeSentry();
 
   // ─── Request context ───────────────────────────────────────────────────
   app.use(requestContextMiddleware);
@@ -80,16 +73,7 @@ export function createApp(options: CreateAppOptions): Application {
   app.use(notFoundHandler);
 
   // ─── Sentry error handler (before our error handler) ───────────────────
-  if (config.infrastructure.sentry.enabled) {
-    app.use(
-      sentryErrorHandler({
-        shouldHandleError: (err) => {
-          const statusCode = (err as { statusCode?: number }).statusCode ?? 500;
-          return statusCode >= 500;
-        },
-      }),
-    );
-  }
+  attachSentryErrorHandler(app);
 
   // ─── Final error handler ───────────────────────────────────────────────
   app.use(errorHandler);

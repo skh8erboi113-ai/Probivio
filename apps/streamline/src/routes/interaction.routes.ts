@@ -1,18 +1,20 @@
-import type { InteractionRepository } from '@listinglogic/db';
-import type { AutomationTrigger, LeadId } from '@listinglogic/types';
-import { createInteractionSchema } from '@listinglogic/validators';
+import { createInteractionSchema, type CreateInteractionPayload } from '@listinglogic/validators';
 import { Router } from 'express';
 
 import { requireAuth } from '../middleware/auth.js';
-import type { EventPublisherService } from '../realtime/event-publisher.service.js';
 import { validate } from '../middleware/validate.js';
-import type { AutomationService } from '../services/automation.service.js';
+import { stripUndefined } from '../utils/strip-undefined.js';
+
+import type { EventPublisherService } from '../realtime/event-publisher.service.js';
+import type { AgentService } from '../services/agent.service.js';
 import type { ScoringService } from '../services/scoring.service.js';
+import type { InteractionRepository } from '@listinglogic/db';
+import type { CreateInteractionInput, LeadId } from '@listinglogic/types';
 
 export interface InteractionRouterDeps {
   readonly interactionRepo: InteractionRepository;
   readonly scoringService: ScoringService;
-  readonly automationService: AutomationService;
+  readonly agentService: AgentService;
   readonly eventPublisher: EventPublisherService;
 }
 
@@ -22,7 +24,11 @@ export function createInteractionRouter(deps: InteractionRouterDeps): Router {
 
   router.post('/', validate({ body: createInteractionSchema }), async (req, res, next) => {
     try {
-      const created = await deps.interactionRepo.record(req.operatorId, req.body);
+      const body = req.body as CreateInteractionPayload;
+      const created = await deps.interactionRepo.record(
+        req.operatorId,
+        stripUndefined(body) as unknown as CreateInteractionInput,
+      );
 
       deps.eventPublisher.publish('interaction.recorded', req.operatorId, {
         interactionId: created.id,
@@ -35,8 +41,8 @@ export function createInteractionRouter(deps: InteractionRouterDeps): Router {
         .scoreLead(req.operatorId, created.leadId, 'interaction')
         .catch(() => undefined);
 
-      void deps.automationService
-        .trigger(req.operatorId, 'lead_scored' as AutomationTrigger, { leadId: created.leadId })
+      void deps.agentService
+        .evaluateLead(req.operatorId, created.leadId, 'interaction_recorded')
         .catch(() => undefined);
 
       res.status(201).json({ data: created, requestId: req.requestId });
@@ -49,7 +55,7 @@ export function createInteractionRouter(deps: InteractionRouterDeps): Router {
     try {
       const interactions = await deps.interactionRepo.findByLead(
         req.operatorId,
-        req.params.leadId! as LeadId,
+        req.params.leadId as LeadId,
       );
       res.json({
         data: interactions,

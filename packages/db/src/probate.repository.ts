@@ -1,5 +1,6 @@
 import type { Logger } from '@listinglogic/logger';
 import type {
+  IsoTimestamp,
   LeadId,
   OperatorId,
   ProbateCase,
@@ -55,7 +56,7 @@ export class ProbateRepository extends BaseRepository<ProbateCase> {
   ): Promise<ProbateCase> {
     return this.update(operatorId, probateCaseId, {
       convertedToLeadId: leadId,
-      reviewedAt: new Date().toISOString() as ReturnType<typeof toIso>,
+      reviewedAt: toIso(),
     });
   }
 
@@ -82,6 +83,6 @@ export class ProbateRepository extends BaseRepository<ProbateCase> {
   }
 }
 
-function toIso() {
-  return new Date().toISOString();
+function toIso(): IsoTimestamp {
+  return new Date().toISOString() as IsoTimestamp;
 }

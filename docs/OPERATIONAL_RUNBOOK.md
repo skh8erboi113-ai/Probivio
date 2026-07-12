@@ -109,20 +109,24 @@ For on-call engineers. Diagnose and remediate common incidents.
 
 ---
 
-## Incident: Twilio/SendGrid delivery failures
+## Incident: SendGrid delivery failures
 
-**Symptoms:** Interactions with `type: sms_sent` failing; operators complain messages not received.
+**Symptoms:** Interactions with `type: email_sent` failing; operators complain emails not received.
 
 **Diagnose:**
 
 1. Check circuit state in logs (search for `Circuit breaker state change`).
-2. Check Twilio console: https://console.twilio.com/us1/monitor/logs/sms
-3. Check SendGrid activity: https://app.sendgrid.com/email_activity
+2. Check SendGrid activity: https://app.sendgrid.com/email_activity
+3. Check `agent_decision_logs` for `blockedReason: execution_error` entries — this means Gemini
+   decided to send but the SendGrid call itself failed.
 
 **Remediate:**
 
-- **TCPA quiet-hours block** is NOT an incident — it's working as designed. Check `recipientState` and current time.
-- **Twilio account suspension** → contact Twilio support; while blocked, `twilio.enabled` should be flipped to false via env update.
+- **Daily email cap block** (`blockedReason: daily_email_cap_reached`) is NOT an incident — it's
+  the guardrail working as designed. Adjust `AUTOMATION_MAX_EMAILS_PER_LEAD_PER_DAY` if too strict.
+- **SendGrid account issue** → check SendGrid status page; while blocked, `sendgrid.enabled` will
+  read false in `/health` once credentials are pulled, and the agent will simply skip `send_email`
+  decisions (guardrail returns `no_email_on_file`/`execution_error` rather than crashing).
 
 ---
 

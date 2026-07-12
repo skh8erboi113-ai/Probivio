@@ -5,7 +5,7 @@ export default defineConfig({
     globals: true,
     environment: 'node',
     include: ['tests/**/*.test.ts', 'src/**/*.test.ts'],
-    exclude: ['node_modules', 'dist', 'tests/integration/**'],
+    exclude: ['node_modules', 'dist'],
 
     setupFiles: ['./tests/setup.ts'],
 
@@ -13,12 +13,7 @@ export default defineConfig({
     hookTimeout: 10_000,
 
     pool: 'forks',
-    poolOptions: {
-      forks: {
-        singleFork: false,
-        isolate: true,
-      },
-    },
+    isolate: true,
 
     reporters: process.env.CI ? ['default', 'junit'] : ['default'],
     outputFile: {
@@ -57,18 +52,4 @@ export default defineConfig({
       '@': '/src',
     },
   },
-});
-// vite.config.js
-import { defineConfig } from "vite";
-import { codecovVitePlugin } from "@codecov/vite-plugin";
-
-export default defineConfig({
-  plugins: [
-    // Put the Codecov vite plugin after all other plugins
-    codecovVitePlugin({
-      enableBundleAnalysis: process.env.CODECOV_TOKEN !== undefined,
-      bundleName: "<bundle project name>",
-      uploadToken: process.env.CODECOV_TOKEN,
-    }),
-  ],
 });

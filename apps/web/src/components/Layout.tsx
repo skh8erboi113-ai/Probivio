@@ -11,7 +11,7 @@ const navItems = [
   { to: '/leads', label: 'Leads' },
   { to: '/buyers', label: 'Buyers' },
   { to: '/probate', label: 'Probate' },
-  { to: '/automations', label: 'Automations' },
+  { to: '/automations', label: 'Gemini Agent' },
 ] as const;
 
 export function Layout() {

@@ -181,7 +181,7 @@ and in-memory when Redis is disabled.
 | `RATE_LIMITED` | 429 | Rate limit exceeded |
 | `PAYLOAD_TOO_LARGE` | 413 | Body exceeds 5MB limit |
 | `INTERNAL_ERROR` | 500 | Unexpected server error |
-| `EXTERNAL_API_ERROR` | 502 | Gemini / Twilio / SendGrid failure |
+| `EXTERNAL_API_ERROR` | 502 | Gemini / SendGrid failure |
 | `CIRCUIT_OPEN` | 503 | External service temporarily unavailable |
 
 ---

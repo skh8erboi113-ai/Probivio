@@ -1,5 +1,4 @@
 import { initializeFirebase, shutdownFirebase } from '@listinglogic/db';
-import type { Router } from 'express';
 
 import { createApp } from './app.js';
 import { loadConfig } from './config/config.js';
@@ -7,7 +6,7 @@ import { getLogger } from './config/logger.js';
 import { buildContainer } from './container.js';
 import { shutdownRateLimit } from './middleware/rate-limit.js';
 import { createRealtimeWebSocketServer } from './realtime/websocket-server.js';
-import { createAutomationRouter } from './routes/automation.routes.js';
+import { createAgentRouter } from './routes/agent.routes.js';
 import { createBuyerRouter } from './routes/buyer.routes.js';
 import { createHealthRouter } from './routes/health.routes.js';
 import { createInteractionRouter } from './routes/interaction.routes.js';
@@ -18,6 +17,9 @@ import { createRetrainingRouter } from './routes/retraining.routes.js';
 import { createSchedulerRouter } from './routes/scheduler.routes.js';
 import { createTaskCallbackRouter } from './routes/task-callback.routes.js';
 
+import type { Router } from 'express';
+
+// eslint-disable-next-line require-await, @typescript-eslint/require-await -- kept async for a uniform `main().catch()` entrypoint pattern
 async function main(): Promise<void> {
   const config = loadConfig();
   const logger = getLogger();
@@ -47,6 +49,7 @@ async function main(): Promise<void> {
       router: createLeadRouter({
         leadRepo: container.leadRepo,
         scoringService: container.scoringService,
+        agentService: container.agentService,
         eventPublisher: container.eventPublisher,
       }),
     },
@@ -63,7 +66,7 @@ async function main(): Promise<void> {
       router: createInteractionRouter({
         interactionRepo: container.interactionRepo,
         scoringService: container.scoringService,
-        automationService: container.automationService,
+        agentService: container.agentService,
         eventPublisher: container.eventPublisher,
       }),
     },
@@ -75,8 +78,11 @@ async function main(): Promise<void> {
       }),
     },
     {
-      path: '/api/automations',
-      router: createAutomationRouter({ automationRepo: container.automationRepo }),
+      path: '/api/agent',
+      router: createAgentRouter({
+        decisionLogRepo: container.decisionLogRepo,
+        agentService: container.agentService,
+      }),
     },
     {
       path: '/api/retraining',
@@ -86,6 +92,8 @@ async function main(): Promise<void> {
       path: '/scheduler',
       router: createSchedulerRouter({
         retrainingService: container.retrainingService,
+        agentService: container.agentService,
+        leadRepo: container.leadRepo,
         opsAlerts: container.opsAlerts,
         logger,
       }),
@@ -93,7 +101,7 @@ async function main(): Promise<void> {
     {
       path: '/tasks',
       router: createTaskCallbackRouter({
-        automationService: container.automationService,
+        agentService: container.agentService,
         logger,
       }),
     },
@@ -107,24 +115,22 @@ async function main(): Promise<void> {
   const wss = createRealtimeWebSocketServer(logger);
   wss.attach(server);
 
-  const shutdown = async (signal: string): Promise<void> => {
+  const shutdown = (signal: string): void => {
     logger.info('Shutdown signal received', { signal });
 
-    server.close(async (err) => {
+    server.close((err) => {
       if (err) logger.error('HTTP server close error', { error: err });
 
-      try {
-        await Promise.all([
-          wss.shutdown(),
-          shutdownRateLimit(),
-          shutdownFirebase(logger),
-        ]);
-      } catch (cleanupErr) {
-        logger.error('Cleanup error during shutdown', { error: cleanupErr });
-      }
+      void (async () => {
+        try {
+          await Promise.all([wss.shutdown(), shutdownRateLimit(), shutdownFirebase(logger)]);
+        } catch (cleanupErr) {
+          logger.error('Cleanup error during shutdown', { error: cleanupErr });
+        }
 
-      logger.info('Shutdown complete');
-      process.exit(0);
+        logger.info('Shutdown complete');
+        process.exit(0);
+      })();
     });
 
     setTimeout(() => {
@@ -133,11 +139,11 @@ async function main(): Promise<void> {
     }, 15_000).unref();
   };
 
-  process.on('SIGTERM', () => void shutdown('SIGTERM'));
-  process.on('SIGINT', () => void shutdown('SIGINT'));
+  process.on('SIGTERM', () => shutdown('SIGTERM'));
+  process.on('SIGINT', () => shutdown('SIGINT'));
   process.on('uncaughtException', (err) => {
     logger.error('Uncaught exception', { error: err });
-    void shutdown('uncaughtException');
+    shutdown('uncaughtException');
   });
   process.on('unhandledRejection', (reason) => {
     logger.error('Unhandled rejection', { reason });

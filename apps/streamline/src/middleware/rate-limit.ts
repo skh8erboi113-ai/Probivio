@@ -1,10 +1,11 @@
-import type { NextFunction, Request, Response } from 'express';
-import rateLimit, { type Options } from 'express-rate-limit';
-import Redis from 'ioredis';
+import rateLimit, { ipKeyGenerator, type Options } from 'express-rate-limit';
+import { Redis } from 'ioredis';
 import { RedisStore } from 'rate-limit-redis';
 
 import { loadConfig } from '../config/config.js';
 import { getLogger } from '../config/logger.js';
+
+import type { NextFunction, Request, Response } from 'express';
 
 /**
  * Rate limiting with Redis-backed sliding window (multi-instance safe).
@@ -30,14 +31,14 @@ function getRedis(): Redis | null {
     maxRetriesPerRequest: 2,
     enableReadyCheck: true,
     lazyConnect: false,
-    reconnectOnError: (err) => {
+    reconnectOnError: (err: Error) => {
       logger.error('Redis connection error', { error: err.message });
       return true;
     },
   });
 
   redis.on('connect', () => logger.info('Redis rate-limiter connected'));
-  redis.on('error', (err) => logger.error('Redis error', { error: err.message }));
+  redis.on('error', (err: Error) => logger.error('Redis error', { error: err.message }));
 
   return redis;
 }
@@ -69,39 +70,43 @@ function createLimiter(overrides: Partial<Options>): ReturnType<typeof rateLimit
     },
     ...(redisClient && {
       store: new RedisStore({
-        sendCommand: (...args: string[]) => redisClient.call(...args) as Promise<unknown>,
+        sendCommand: async (...args: string[]) => {
+          const [command, ...rest] = args as [string, ...string[]];
+          const result = await redisClient.call(command, rest);
+          return result as boolean | number | string | (boolean | number | string)[];
+        },
         prefix: 'rl:',
       }),
     }),
   };
 
-  return rateLimit({ ...base, ...overrides } as Options);
+  return rateLimit({ ...base, ...overrides });
 }
 
 // ─── Public limiters ──────────────────────────────────────────────────────
 export const globalRateLimiter = createLimiter({
   windowMs: 60_000,
   limit: 60,
-  keyGenerator: (req) => req.ip ?? 'unknown',
+  keyGenerator: (req) => ipKeyGenerator(req.ip ?? 'unknown'),
 });
 
 export const authRateLimiter = createLimiter({
   windowMs: 60_000,
   limit: 10,
-  keyGenerator: (req) => `auth:${req.ip ?? 'unknown'}`,
+  keyGenerator: (req) => `auth:${ipKeyGenerator(req.ip ?? 'unknown')}`,
   skipSuccessfulRequests: true,
 });
 
 export const aiRateLimiter = createLimiter({
   windowMs: 60_000,
   limit: 20,
-  keyGenerator: (req) => `ai:${req.operatorId ?? req.ip ?? 'unknown'}`,
+  keyGenerator: (req) => `ai:${req.operatorId ?? ipKeyGenerator(req.ip ?? 'unknown')}`,
 });
 
 export const sendRateLimiter = createLimiter({
   windowMs: 60 * 60 * 1000,
   limit: 30,
-  keyGenerator: (req) => `send:${req.operatorId ?? req.ip ?? 'unknown'}`,
+  keyGenerator: (req) => `send:${req.operatorId ?? ipKeyGenerator(req.ip ?? 'unknown')}`,
 });
 
 /**

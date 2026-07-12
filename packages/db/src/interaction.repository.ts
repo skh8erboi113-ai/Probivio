@@ -3,7 +3,6 @@ import type {
   CreateInteractionInput,
   Interaction,
   InteractionFeatures,
-  InteractionId,
   IsoTimestamp,
   LeadId,
   OperatorId,
@@ -93,14 +92,13 @@ export class InteractionRepository extends BaseRepository<Interaction> {
     ).length;
 
     const outbound = interactions.filter((i) =>
-      [InteractionType.SMS_SENT, InteractionType.EMAIL_SENT, InteractionType.CALL_MADE].includes(i.type as typeof InteractionType.SMS_SENT),
+      [InteractionType.EMAIL_SENT, InteractionType.CALL_MADE].includes(i.type as typeof InteractionType.EMAIL_SENT),
     );
     const inbound = interactions.filter((i) =>
       [
-        InteractionType.SMS_REPLIED,
         InteractionType.EMAIL_REPLIED,
         InteractionType.CALL_ANSWERED,
-      ].includes(i.type as typeof InteractionType.SMS_REPLIED),
+      ].includes(i.type as typeof InteractionType.EMAIL_REPLIED),
     );
 
     const responseRate = outbound.length > 0 ? inbound.length / outbound.length : 0;
@@ -172,16 +170,14 @@ export class InteractionRepository extends BaseRepository<Interaction> {
       if (!current || !next) continue;
 
       const isOutbound = [
-        InteractionType.SMS_SENT,
         InteractionType.EMAIL_SENT,
         InteractionType.CALL_MADE,
-      ].includes(current.type as typeof InteractionType.SMS_SENT);
+      ].includes(current.type as typeof InteractionType.EMAIL_SENT);
 
       const isResponse = [
-        InteractionType.SMS_REPLIED,
         InteractionType.EMAIL_REPLIED,
         InteractionType.CALL_ANSWERED,
-      ].includes(next.type as typeof InteractionType.SMS_REPLIED);
+      ].includes(next.type as typeof InteractionType.EMAIL_REPLIED);
 
       if (isOutbound && isResponse) {
         const diffMs =

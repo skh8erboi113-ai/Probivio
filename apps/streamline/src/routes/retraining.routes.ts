@@ -1,6 +1,7 @@
 import { Router } from 'express';
 
 import { requireAuth, requireClaim } from '../middleware/auth.js';
+
 import type { RetrainingService } from '../services/retraining.service.js';
 
 export interface RetrainingRouterDeps {

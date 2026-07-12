@@ -4,7 +4,7 @@ import type { Application } from 'express';
 
 import { createApp } from '../../src/app.js';
 import { createBuyerRouter } from '../../src/routes/buyer.routes.js';
-import { makeAuthHeader, makeBuyer, makeCreateBuyerInput, TEST_OPERATOR_ID } from '../factories.js';
+import { makeAuthHeader, makeBuyer, TEST_OPERATOR_ID } from '../factories.js';
 
 // ─── Helpers ─────────────────────────────────────────────────────────────
 function makeCreateBuyerInput() {
@@ -62,6 +62,10 @@ const mockBuyerMatchingService = {
   ]),
 };
 
+const mockEventPublisher = {
+  publish: vi.fn(),
+};
+
 function buildApp(): Application {
   return createApp({
     routers: [
@@ -70,6 +74,7 @@ function buildApp(): Application {
         router: createBuyerRouter({
           buyerRepo: mockBuyerRepo as never,
           buyerMatching: mockBuyerMatchingService as never,
+          eventPublisher: mockEventPublisher as never,
         }),
       },
     ],

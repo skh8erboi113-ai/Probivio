@@ -23,7 +23,7 @@ Complete system design for Streamline v2.0.
                           ▼
                     ┌────────────────────────────────────────────┐
                     │ External APIs                              │
-                    │   Gemini · Twilio · SendGrid · Skip Trace  │
+                    │   Gemini · SendGrid · Skip Trace            │
                     └────────────────────────────────────────────┘
 
 ---

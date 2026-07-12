@@ -15,8 +15,6 @@ import type {
 
 export const InteractionType = {
   // Communication
-  SMS_SENT: 'sms_sent',
-  SMS_REPLIED: 'sms_replied',
   EMAIL_SENT: 'email_sent',
   EMAIL_OPENED: 'email_opened',
   EMAIL_REPLIED: 'email_replied',
@@ -58,7 +56,7 @@ export interface Interaction extends OperatorScoped, AuditFields {
   readonly metadata: Readonly<Record<string, unknown>>;
   readonly occurredAt: IsoTimestamp;
   readonly durationSeconds?: number;
-  readonly channelId?: string;                 // Twilio SID, SendGrid message ID, etc.
+  readonly channelId?: string;                 // SendGrid message ID, etc.
 }
 
 export type CreateInteractionInput = Omit<

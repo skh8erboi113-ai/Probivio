@@ -1,6 +1,7 @@
+import { CircuitOpenError } from '../errors/app-errors.js';
+
 import type { Logger } from '@listinglogic/logger';
 
-import { CircuitOpenError } from '../errors/app-errors.js';
 
 /**
  * Circuit breaker for external service calls.
@@ -10,7 +11,7 @@ import { CircuitOpenError } from '../errors/app-errors.js';
  *   OPEN     — failure threshold exceeded, requests fail fast
  *   HALF_OPEN — recovery probe, one request allowed to test the waters
  *
- * Prevents cascading failures when Gemini/Twilio/SendGrid degrade.
+ * Prevents cascading failures when Gemini/SendGrid degrade.
  */
 
 export type CircuitState = 'CLOSED' | 'OPEN' | 'HALF_OPEN';

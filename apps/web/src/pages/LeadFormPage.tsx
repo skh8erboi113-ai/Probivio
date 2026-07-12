@@ -1,6 +1,8 @@
 import { useState, type FormEvent } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 
+import type { CreateLeadPayload } from '@listinglogic/validators';
+
 import { Button } from '../components/ui/Button';
 import { Card } from '../components/ui/Card';
 import { Input } from '../components/ui/Input';
@@ -46,27 +48,31 @@ export function LeadFormPage() {
     setSubmitting(true);
 
     const form = new FormData(e.currentTarget);
-    const payload = {
+    const payload: CreateLeadPayload = {
       contact: {
         firstName: String(form.get('firstName')),
         lastName: String(form.get('lastName')),
-        email: String(form.get('email') || '') || undefined,
-        phone: String(form.get('phone') || '') || undefined,
+        ...(String(form.get('email') || '') && { email: String(form.get('email')) }),
+        ...(String(form.get('phone') || '') && { phone: String(form.get('phone')) }),
       },
       property: {
         address: String(form.get('address')),
         city: String(form.get('city')),
-        state: String(form.get('state')).toUpperCase(),
+        state: String(form.get('state')).toUpperCase() as CreateLeadPayload['property']['state'],
         zip: String(form.get('zip')),
       },
       metrics: {
-        askingPrice: Number(form.get('askingPrice') || 0) * 100 || undefined,
-        arv: Number(form.get('arv') || 0) * 100 || undefined,
-        repairEstimate: Number(form.get('repairEstimate') || 0) * 100 || undefined,
+        ...(Number(form.get('askingPrice') || 0) > 0 && { askingPrice: Number(form.get('askingPrice')) * 100 }),
+        ...(Number(form.get('arv') || 0) > 0 && { arv: Number(form.get('arv')) * 100 }),
+        ...(Number(form.get('repairEstimate') || 0) > 0 && {
+          repairEstimate: Number(form.get('repairEstimate')) * 100,
+        }),
       },
-      source: String(form.get('source')) as never,
-      motivation: String(form.get('motivation')) as never,
-      notes: String(form.get('notes') || '') || undefined,
+      source: String(form.get('source')) as CreateLeadPayload['source'],
+      status: 'new',
+      motivation: String(form.get('motivation')) as CreateLeadPayload['motivation'],
+      ...(String(form.get('notes') || '') && { notes: String(form.get('notes')) }),
+      tags: [],
     };
 
     try {

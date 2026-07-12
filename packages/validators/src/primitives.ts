@@ -65,7 +65,7 @@ export const zipSchema = z
  * Trims, enforces length, and strips control characters that could be used
  * for prompt injection or log poisoning.
  */
-export const safeStringSchema = (min: number, max: number): z.ZodString =>
+export const safeStringSchema = (min: number, max: number): z.ZodType<string, string> =>
   z
     .string()
     .trim()

@@ -106,12 +106,16 @@ Extract labels:
 
 Alert when a single operator triggers > 100 rate limits per hour (potential abuse).
 
-### Metric: TCPA blocks
+### Metric: Agent decisions blocked by guardrails
 
     resource.type="cloud_run_revision"
-    jsonPayload.message="TCPA quiet-hours block"
+    jsonPayload.message="Agent decision logged"
+    jsonPayload.executed=false
 
-Trend this over time. Sudden spikes indicate an automation targeting the wrong timezone.
+Trend this over time. Sudden spikes indicate either a misconfigured guardrail (e.g. email cap set
+too low) or Gemini consistently proposing actions outside the whitelist (check `blockedReason` —
+anything other than `daily_email_cap_reached` / `no_email_on_file` / `ai_may_not_close_deals`
+warrants investigation).
 
 ### Metric: Scoring latency
 

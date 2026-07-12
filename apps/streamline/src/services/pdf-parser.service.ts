@@ -1,7 +1,8 @@
-import type { Logger } from '@listinglogic/logger';
 import pdfParse from 'pdf-parse';
 
 import { InternalError, ValidationError } from '../errors/app-errors.js';
+
+import type { Logger } from '@listinglogic/logger';
 
 /**
  * PDF text extraction service.
@@ -19,6 +20,13 @@ import { InternalError, ValidationError } from '../errors/app-errors.js';
 const MAX_PDF_BYTES = 20 * 1024 * 1024;
 const MAX_PAGES = 200;
 const MAX_OUTPUT_CHARS = 500_000;
+
+/** `pdf-parse`'s `info` field is untyped (`any`) upstream — narrow the fields we read. */
+interface PdfInfoDictionary {
+  readonly Title?: unknown;
+  readonly Author?: unknown;
+  readonly CreationDate?: unknown;
+}
 
 export interface PdfExtractionResult {
   readonly text: string;
@@ -66,13 +74,15 @@ export class PdfParserService {
         durationMs: Date.now() - start,
       });
 
+      const info = parsed.info as PdfInfoDictionary | undefined;
+
       return {
         text: sanitized,
         pageCount: parsed.numpages,
         metadata: {
-          ...(parsed.info?.Title && { title: String(parsed.info.Title) }),
-          ...(parsed.info?.Author && { author: String(parsed.info.Author) }),
-          ...(parsed.info?.CreationDate && { creationDate: String(parsed.info.CreationDate) }),
+          ...(Boolean(info?.Title) && { title: String(info?.Title) }),
+          ...(Boolean(info?.Author) && { author: String(info?.Author) }),
+          ...(Boolean(info?.CreationDate) && { creationDate: String(info?.CreationDate) }),
         },
       };
     } catch (err) {
@@ -85,7 +95,7 @@ export class PdfParserService {
     }
   }
 
-  public async extractFromBase64(base64: string, filename?: string): Promise<PdfExtractionResult> {
+  public extractFromBase64(base64: string, filename?: string): Promise<PdfExtractionResult> {
     let buffer: Buffer;
     try {
       buffer = Buffer.from(base64, 'base64');
@@ -130,6 +140,7 @@ export class PdfParserService {
 
   private sanitize(text: string): string {
     return text
+      // eslint-disable-next-line no-control-regex -- intentional: stripping control chars for prompt-injection defense
       .replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/g, '')
       .replace(/\r\n/g, '\n')
       .replace(/\n{4,}/g, '\n\n\n')

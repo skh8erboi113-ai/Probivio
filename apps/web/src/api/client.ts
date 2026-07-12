@@ -91,7 +91,7 @@ async function request<T>(path: string, options: RequestOptions = {}): Promise<T
         Accept: 'application/json',
         ...authHeader,
       },
-      body: body ? JSON.stringify(body) : undefined,
+      ...(body ? { body: JSON.stringify(body) } : {}),
       signal: combinedSignal.signal,
       credentials: 'same-origin',
     });

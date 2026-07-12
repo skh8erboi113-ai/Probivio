@@ -3,9 +3,12 @@ import { z } from 'zod';
 
 import { isoTimestampSchema, paginationSchema } from './primitives.js';
 
-export const interactionTypeSchema = z.enum(
-  Object.values(InteractionType) as [string, ...string[]],
-);
+const INTERACTION_TYPE_VALUES = Object.values(InteractionType) as [
+  (typeof InteractionType)[keyof typeof InteractionType],
+  ...(typeof InteractionType)[keyof typeof InteractionType][],
+];
+
+export const interactionTypeSchema = z.enum(INTERACTION_TYPE_VALUES);
 
 export const interactionOutcomeSchema = z.enum([
   InteractionOutcome.POSITIVE,
@@ -17,7 +20,7 @@ export const createInteractionSchema = z.object({
   leadId: z.string().min(1),
   type: interactionTypeSchema,
   outcome: interactionOutcomeSchema.default(InteractionOutcome.NEUTRAL),
-  metadata: z.record(z.unknown()).default({}),
+  metadata: z.record(z.string(), z.unknown()).default({}),
   occurredAt: isoTimestampSchema.default(() => new Date().toISOString()),
   durationSeconds: z.number().int().min(0).max(86_400).optional(),
   channelId: z.string().max(200).optional(),

@@ -83,9 +83,6 @@ build_secret_flags() {
   # Optional secrets — only include if they exist in Secret Manager
   local optional_secrets=(
     "GEMINI_API_KEY=gemini-api-key:latest"
-    "TWILIO_ACCOUNT_SID=twilio-account-sid:latest"
-    "TWILIO_AUTH_TOKEN=twilio-auth-token:latest"
-    "TWILIO_FROM_NUMBER=twilio-from-number:latest"
     "SENDGRID_API_KEY=sendgrid-api-key:latest"
     "SENDGRID_FROM_EMAIL=sendgrid-from-email:latest"
     "REDIS_URL=redis-url:latest"

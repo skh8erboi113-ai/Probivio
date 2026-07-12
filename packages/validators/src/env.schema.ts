@@ -37,9 +37,6 @@ export const envSchema = z.object({
 
   // ─── External APIs (OPTIONAL — features degrade gracefully) ─────────────
   GEMINI_API_KEY: z.string().optional(),
-  TWILIO_ACCOUNT_SID: z.string().regex(/^AC[a-f0-9]{32}$/, 'Invalid Twilio SID').optional(),
-  TWILIO_AUTH_TOKEN: z.string().min(32).optional(),
-  TWILIO_FROM_NUMBER: z.string().regex(/^\+\d{10,15}$/, 'Twilio from number must be E.164').optional(),
   SENDGRID_API_KEY: z.string().startsWith('SG.', 'SendGrid keys start with SG.').optional(),
   SENDGRID_FROM_EMAIL: z.string().email().optional(),
   TELEGRAM_BOT_TOKEN: z.string().optional(),
@@ -54,6 +51,11 @@ export const envSchema = z.object({
   ENABLE_ML_RETRAINING: z.coerce.boolean().default(true),
   ENABLE_AUTOMATION_ENGINE: z.coerce.boolean().default(true),
   ENABLE_PROBATE_SCANNER: z.coerce.boolean().default(true),
+
+  // ─── Gemini automation decision engine ───────────────────────────────────
+  AUTOMATION_SWEEP_INTERVAL_MINUTES: z.coerce.number().int().min(5).max(1440).default(60),
+  AUTOMATION_MAX_EMAILS_PER_LEAD_PER_DAY: z.coerce.number().int().min(0).max(10).default(1),
 });
 
 export type ValidatedEnv = z.infer<typeof envSchema>;
+

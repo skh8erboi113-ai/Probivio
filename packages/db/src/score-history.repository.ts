@@ -32,7 +32,6 @@ export class ScoreHistoryRepository extends BaseRepository<ScoreHistory> {
   ): Promise<ScoreHistory> {
     return this.create(operatorId, {
       leadId,
-      operatorId,
       score,
       triggeredBy,
       ...(previousComposite !== undefined && { previousComposite }),

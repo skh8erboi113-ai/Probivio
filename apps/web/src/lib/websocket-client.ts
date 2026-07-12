@@ -1,5 +1,5 @@
-import { getEnv } from './env';
-import { getFirebaseAuth } from './firebase';
+import { env } from '../config/env';
+import { getFirebaseAuth } from '../config/firebase';
 
 /**
  * Auto-reconnecting WebSocket client for real-time events.
@@ -64,7 +64,6 @@ export class RealtimeClient {
   }
 
   private async openConnection(): Promise<void> {
-    const env = getEnv();
     const auth = getFirebaseAuth();
 
     if (!auth.currentUser) {
@@ -81,7 +80,7 @@ export class RealtimeClient {
     }
 
     // Convert http(s) to ws(s) and append /ws
-    const wsUrl = env.VITE_API_URL.replace(/^http/, 'ws') + `/ws?token=${encodeURIComponent(token)}`;
+    const wsUrl = env.apiUrl.replace(/^http/, 'ws') + `/ws?token=${encodeURIComponent(token)}`;
 
     this.setStatus('connecting');
 
@@ -178,4 +177,4 @@ let cached: RealtimeClient | null = null;
 export function getRealtimeClient(): RealtimeClient {
   if (!cached) cached = new RealtimeClient();
   return cached;
-                             }
+}

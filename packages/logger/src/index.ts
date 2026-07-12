@@ -75,7 +75,15 @@ const contextInjector = winston.format((info) => {
 });
 
 const redactor = winston.format((info) => {
+  // `redactSensitive` rebuilds the object via `Object.entries`, which only
+  // copies enumerable string-keyed properties. Winston relies on the
+  // Symbol.for('level')/Symbol.for('message') symbols it attaches to `info`
+  // for downstream formatters (e.g. colorize) — copy those back over so
+  // redaction doesn't silently break them.
   const redacted = redactSensitive(info) as winston.Logform.TransformableInfo;
+  for (const sym of Object.getOwnPropertySymbols(info)) {
+    (redacted as Record<PropertyKey, unknown>)[sym] = (info as Record<PropertyKey, unknown>)[sym];
+  }
   return redacted;
 });
 

@@ -17,18 +17,18 @@ process.env.SESSION_SECRET ??= 'test-session-secret-min-32-characters-long-12345
 
 process.env.ALLOWED_ORIGINS ??= 'http://localhost:5173,http://localhost:3000';
 
-// Keep external integrations disabled in test runs
-process.env.GEMINI_API_KEY ??= '';
-process.env.TWILIO_ACCOUNT_SID ??= '';
-process.env.TWILIO_AUTH_TOKEN ??= '';
-process.env.TWILIO_FROM_NUMBER ??= '';
-process.env.SENDGRID_API_KEY ??= '';
-process.env.SENDGRID_FROM_EMAIL ??= '';
-process.env.DISCORD_WEBHOOK_URL ??= '';
-process.env.TELEGRAM_BOT_TOKEN ??= '';
-process.env.SKIP_TRACE_API_KEY ??= '';
-process.env.REDIS_URL ??= '';
-process.env.SENTRY_DSN ??= '';
+// Keep external integrations disabled in test runs. These are all optional
+// in envSchema (z.string().optional() etc), which only accepts `undefined` —
+// an empty string is "present but invalid" and fails validation — so unset
+// them entirely rather than defaulting to ''.
+delete process.env.GEMINI_API_KEY;
+delete process.env.SENDGRID_API_KEY;
+delete process.env.SENDGRID_FROM_EMAIL;
+delete process.env.DISCORD_WEBHOOK_URL;
+delete process.env.TELEGRAM_BOT_TOKEN;
+delete process.env.SKIP_TRACE_API_KEY;
+delete process.env.REDIS_URL;
+delete process.env.SENTRY_DSN;
 
 // Feature flags
 process.env.ENABLE_ML_RETRAINING ??= 'false';

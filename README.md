@@ -17,7 +17,9 @@ Streamline manages the end-to-end wholesaling pipeline:
 - **Probate discovery** — PDF ingestion → Gemini AI extraction → structured lead
 - **Lead scoring** — Three-dimensional scoring (deal / motivation / urgency) with self-learning weights
 - **Buyer matching** — Buy-box filtering + fine-grained scoring against operator's Rolodex
-- **Automations** — Trigger-based Twilio SMS + SendGrid email with TCPA compliance
+- **Automations** — Gemini-driven autonomous agent (no fixed rules): on every lead event and on a
+  periodic sweep, Gemini decides the next action (email, tag, status change, follow-up, or nothing),
+  constrained by a hard-coded action whitelist and guardrails, with every decision logged for audit.
 - **Feedback loop** — Every interaction retrains the scoring model per-operator
 
 The design goal is **acquisition-readiness**: clean modular boundaries, complete test coverage, full observability, and no hidden magic.
@@ -142,7 +144,7 @@ Every one of these is enforced in code:
 - ✅ Zod validation + sanitization on every payload (control chars stripped)
 - ✅ Redis-backed sliding-window rate limiting (4 tiers)
 - ✅ TCPA quiet-hours enforcement per US state timezone
-- ✅ Circuit breakers on Gemini / Twilio / SendGrid / Skip Trace
+- ✅ Circuit breakers on Gemini / SendGrid / Skip Trace
 - ✅ Google Secret Manager for all production credentials
 - ✅ bcrypt cost 12 for any hashing
 - ✅ No stack traces in production responses

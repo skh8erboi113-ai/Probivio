@@ -1,6 +1,7 @@
+import { getPubSub, type PubSubTransport, type RealtimeEventType } from './pubsub.js';
+
 import type { Logger } from '@listinglogic/logger';
 
-import { getPubSub, type PubSubTransport, type RealtimeEventType } from './pubsub.js';
 
 /**
  * High-level publisher used by domain services.

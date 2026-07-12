@@ -1,9 +1,15 @@
-import type { Logger } from '@listinglogic/logger';
+import { runAgentSweepSchema } from '@listinglogic/validators';
 import { Router } from 'express';
 
 import { UnauthorizedError } from '../errors/app-errors.js';
-import type { RetrainingService } from '../services/retraining.service.js';
+
+import type { AgentService } from '../services/agent.service.js';
 import type { OpsAlertsService } from '../services/ops-alerts.service.js';
+import type { RetrainingService } from '../services/retraining.service.js';
+import type { LeadRepository } from '@listinglogic/db';
+import type { Logger } from '@listinglogic/logger';
+import type { OperatorId } from '@listinglogic/types';
+
 
 /**
  * Endpoints invoked by Cloud Scheduler for periodic jobs.
@@ -15,6 +21,8 @@ import type { OpsAlertsService } from '../services/ops-alerts.service.js';
 
 export interface SchedulerRouterDeps {
   readonly retrainingService: RetrainingService;
+  readonly agentService: AgentService;
+  readonly leadRepo: LeadRepository;
   readonly opsAlerts: OpsAlertsService;
   readonly logger: Logger;
 }
@@ -48,7 +56,8 @@ export function createSchedulerRouter(deps: SchedulerRouterDeps): Router {
 
       if (operatorIds.length === 0) {
         // In production, discover operators via a query against the operators collection
-        return res.json({ processed: 0, message: 'No operators specified' });
+        res.json({ processed: 0, message: 'No operators specified' });
+        return;
       }
 
       const results = await Promise.allSettled(
@@ -78,13 +87,58 @@ export function createSchedulerRouter(deps: SchedulerRouterDeps): Router {
     }
   });
 
-  // Stale lead sweep — dispatch automation triggers for leads not contacted in N days
-  router.post('/stale-lead-sweep', async (req, res, next) => {
+  // Periodic Gemini automation sweep — asks the agent to re-evaluate every
+  // active lead for each operator, so leads get follow-up attention even
+  // without a triggering event (new interaction, status change, etc).
+  router.post('/agent-sweep', async (req, res, next) => {
     try {
-      const body = req.body as { readonly daysThreshold?: number };
-      const threshold = body.daysThreshold ?? 14;
-      // Actual sweep would iterate operators and call leadRepo.findStaleLeads
-      res.json({ threshold, note: 'Stale sweep placeholder — wire per-operator iteration' });
+      const body = runAgentSweepSchema.parse(req.body);
+      const operatorIds = body.operatorIds ?? [];
+
+      if (operatorIds.length === 0) {
+        // In production, discover operators via a query against the operators collection
+        res.json({ processed: 0, message: 'No operators specified' });
+        return;
+      }
+
+      let totalLeads = 0;
+      let executedCount = 0;
+      let blockedCount = 0;
+      let errorCount = 0;
+
+      for (const rawOperatorId of operatorIds) {
+        const operatorId = rawOperatorId as OperatorId;
+        const leads = await deps.leadRepo.findActiveLeads(operatorId);
+        totalLeads += leads.length;
+
+        const results = await Promise.allSettled(
+          leads.map((lead) => deps.agentService.evaluateLead(operatorId, lead.id, 'scheduled_sweep')),
+        );
+
+        for (const result of results) {
+          if (result.status === 'fulfilled') {
+            if (result.value.executed) executedCount += 1;
+            else blockedCount += 1;
+          } else {
+            errorCount += 1;
+          }
+        }
+      }
+
+      deps.opsAlerts.dispatch({
+        severity: errorCount > 0 ? 'warning' : 'info',
+        title: 'Agent sweep complete',
+        message: `Evaluated ${totalLeads} leads across ${operatorIds.length} operators`,
+        metadata: { executed: executedCount, blocked: blockedCount, errors: errorCount },
+      });
+
+      res.json({
+        operators: operatorIds.length,
+        leadsEvaluated: totalLeads,
+        executed: executedCount,
+        blocked: blockedCount,
+        errors: errorCount,
+      });
     } catch (err) {
       next(err);
     }

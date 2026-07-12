@@ -1,11 +1,12 @@
 import compression from 'compression';
 import cors from 'cors';
-import type { Application, NextFunction, Request, Response } from 'express';
 import helmet from 'helmet';
 
 import { loadConfig } from '../config/config.js';
 import { getLogger } from '../config/logger.js';
 import { ForbiddenError } from '../errors/app-errors.js';
+
+import type { Application, NextFunction, Request, Response } from 'express';
 
 /**
  * Composed security middleware stack.
@@ -30,7 +31,7 @@ export function applySecurityMiddleware(app: Application): void {
           scriptSrc: ["'self'"],
           styleSrc: ["'self'", "'unsafe-inline'"],
           imgSrc: ["'self'", 'data:', 'https:'],
-          connectSrc: ["'self'", 'https://*.googleapis.com', 'https://*.twilio.com'],
+          connectSrc: ["'self'", 'https://*.googleapis.com'],
           fontSrc: ["'self'", 'data:'],
           objectSrc: ["'none'"],
           frameAncestors: ["'none'"],
@@ -95,8 +96,15 @@ export function sanitizeRequestMiddleware(req: Request, _res: Response, next: Ne
   if (req.body && typeof req.body === 'object') {
     req.body = deepSanitize(req.body);
   }
+  // Express 5 exposes `req.query` as a getter-only property (parsed lazily
+  // from the URL), so it can't be reassigned like `req.body`. Sanitize the
+  // existing object's properties in place instead.
   if (req.query && typeof req.query === 'object') {
-    req.query = deepSanitize(req.query) as typeof req.query;
+    const sanitized = deepSanitize(req.query) as Record<string, unknown>;
+    for (const key of Object.keys(req.query)) {
+      delete (req.query as Record<string, unknown>)[key];
+    }
+    Object.assign(req.query, sanitized);
   }
   next();
 }
@@ -104,6 +112,7 @@ export function sanitizeRequestMiddleware(req: Request, _res: Response, next: Ne
 function deepSanitize(input: unknown, depth = 0): unknown {
   if (depth > 20) return input;
   if (input === null || input === undefined) return input;
+  // eslint-disable-next-line no-control-regex -- intentional: stripping control chars for log/prompt-injection defense
   if (typeof input === 'string') return input.replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/g, '');
   if (typeof input !== 'object') return input;
   if (Array.isArray(input)) return input.map((item) => deepSanitize(item, depth + 1));

@@ -40,6 +40,22 @@ const mockScoringService = {
   }),
 };
 
+const mockAgentService = {
+  evaluateLead: vi.fn().mockResolvedValue({
+    id: 'decision_1',
+    leadId: mockLead.id,
+    trigger: 'lead_created',
+    action: { type: 'no_action' },
+    reasoning: 'test',
+    executed: true,
+    modelVersion: 'gemini-1.5-flash',
+  }),
+};
+
+const mockEventPublisher = {
+  publish: vi.fn(),
+};
+
 function buildApp(): Application {
   return createApp({
     routers: [
@@ -48,6 +64,8 @@ function buildApp(): Application {
         router: createLeadRouter({
           leadRepo: mockLeadRepo as never,
           scoringService: mockScoringService as never,
+          agentService: mockAgentService as never,
+          eventPublisher: mockEventPublisher as never,
         }),
       },
     ],

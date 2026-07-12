@@ -1,5 +1,11 @@
-import type { Logger } from '@listinglogic/logger';
+import { ProbateStatus } from '@listinglogic/types';
+
+import { ConflictError, ValidationError } from '../errors/app-errors.js';
+
+import type { GeminiService } from './gemini.service.js';
+import type { PdfParserService } from './pdf-parser.service.js';
 import type { ProbateRepository } from '@listinglogic/db';
+import type { Logger } from '@listinglogic/logger';
 import type {
   IsoTimestamp,
   OperatorId,
@@ -7,12 +13,6 @@ import type {
   ProbateExtractionResult,
   UsStateCode,
 } from '@listinglogic/types';
-import { ProbateStatus } from '@listinglogic/types';
-
-import { ConflictError, ValidationError } from '../errors/app-errors.js';
-
-import type { GeminiService } from './gemini.service.js';
-import type { PdfParserService } from './pdf-parser.service.js';
 
 export class ProbateService {
   private readonly logger: Logger;
@@ -74,7 +74,7 @@ export class ProbateService {
       decedent: {
         fullName: extracted.decedent.fullName ?? 'UNKNOWN',
         ...(extracted.decedent.dateOfDeath && {
-          dateOfDeath: extracted.decedent.dateOfDeath as IsoTimestamp,
+          dateOfDeath: extracted.decedent.dateOfDeath,
         }),
         ...(extracted.decedent.lastKnownAddress && {
           lastKnownAddress: extracted.decedent.lastKnownAddress,
@@ -94,7 +94,7 @@ export class ProbateService {
       assets: extracted.assets
         .filter((a) => a.description)
         .map((a) => ({
-          type: (a.type ?? 'other') as 'real_property' | 'vehicle' | 'financial' | 'other',
+          type: (a.type ?? 'other'),
           description: a.description ?? '',
           ...(a.estimatedValue !== undefined &&
             a.estimatedValue !== null && { estimatedValue: a.estimatedValue }),

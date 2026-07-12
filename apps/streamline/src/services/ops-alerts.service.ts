@@ -1,6 +1,7 @@
+import { loadConfig } from '../config/config.js';
+
 import type { Logger } from '@listinglogic/logger';
 
-import { loadConfig } from '../config/config.js';
 
 /**
  * Operational alerting to Telegram + Discord.

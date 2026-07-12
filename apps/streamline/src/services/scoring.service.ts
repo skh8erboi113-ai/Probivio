@@ -1,10 +1,23 @@
-import type { Logger } from '@listinglogic/logger';
+import {
+  LeadSource,
+  MotivationLevel,
+  PropertyCondition,
+  ScoreRecommendation,
+} from '@listinglogic/types';
+
+
+import type { GeminiService } from './gemini.service.js';
+import type { MlFeatureExtractorService } from './ml-feature-extractor.service.js';
+import type { ModelRegistryService } from './model-registry.service.js';
+import type { OnnxInferenceService } from './onnx-inference.service.js';
+import type { EventPublisherService } from '../realtime/event-publisher.service.js';
 import type {
   InteractionRepository,
   LeadRepository,
   ScoreHistoryRepository,
   ScoringWeightsRepository,
 } from '@listinglogic/db';
+import type { Logger } from '@listinglogic/logger';
 import type {
   IsoTimestamp,
   InteractionFeatures,
@@ -15,19 +28,6 @@ import type {
   ScoreHistory,
   ScoreResult,
 } from '@listinglogic/types';
-import {
-  LeadSource,
-  MotivationLevel,
-  PropertyCondition,
-  ScoreRecommendation,
-} from '@listinglogic/types';
-
-import type { EventPublisherService } from '../realtime/event-publisher.service.js';
-
-import type { GeminiService } from './gemini.service.js';
-import type { MlFeatureExtractorService } from './ml-feature-extractor.service.js';
-import type { ModelRegistryService } from './model-registry.service.js';
-import type { OnnxInferenceService } from './onnx-inference.service.js';
 
 const HEURISTIC_MODEL_VERSION = '2.0.0-heuristic-fallback';
 
@@ -91,12 +91,12 @@ export class ScoringService {
           leadId,
           error: err instanceof Error ? err.message : String(err),
         });
-        composite = Math.round((dealScore.score + motivationScore.score + urgencyScore.score) / 3);
+        composite = await this.computeWeightedComposite(operatorId, dealScore.score, motivationScore.score, urgencyScore.score);
         confidence = this.computeHeuristicConfidence(lead, interactionFeatures);
         modelVersion = HEURISTIC_MODEL_VERSION;
       }
     } else {
-      composite = Math.round((dealScore.score + motivationScore.score + urgencyScore.score) / 3);
+      composite = await this.computeWeightedComposite(operatorId, dealScore.score, motivationScore.score, urgencyScore.score);
       confidence = this.computeHeuristicConfidence(lead, interactionFeatures);
       modelVersion = HEURISTIC_MODEL_VERSION;
     }
@@ -153,6 +153,25 @@ export class ScoringService {
     });
 
     return result;
+  }
+
+  /**
+   * Blends the three dimension scores using the operator's learned weights
+   * (populated by the retraining loop). Falls back to the repository's
+   * built-in defaults (0.4 / 0.4 / 0.2) when no retraining has happened yet.
+   */
+  private async computeWeightedComposite(
+    operatorId: OperatorId,
+    dealScore: number,
+    motivationScore: number,
+    urgencyScore: number,
+  ): Promise<number> {
+    const weights = await this.weightsRepo.getCurrent(operatorId);
+    const composite =
+      dealScore * weights.dealWeight +
+      motivationScore * weights.motivationWeight +
+      urgencyScore * weights.urgencyWeight;
+    return this.clamp(Math.round(composite));
   }
 
   private computeDealScore(lead: Lead): { readonly score: number; readonly factors: ScoreFactor[] } {
@@ -250,7 +269,7 @@ export class ScoringService {
   }
 
   private computeUrgencyScore(
-    lead: Lead,
+    _lead: Lead,
     features: InteractionFeatures,
   ): { readonly score: number; readonly factors: ScoreFactor[] } {
     const factors: ScoreFactor[] = [];

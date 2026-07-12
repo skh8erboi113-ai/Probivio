@@ -1,12 +1,15 @@
 import { describe, it, expect, vi } from 'vitest';
 
-import type { LeadId, OperatorId } from '@listinglogic/types';
-import type { LeadRepository, InteractionRepository, ScoreHistoryRepository, ScoringWeightsRepository, ScoringWeights, ScoreResult } from '@listinglogic/db';
+import type { LeadId, OperatorId, IsoTimestamp } from '@listinglogic/types';
+import type { LeadRepository, InteractionRepository, ScoreHistoryRepository, ScoringWeightsRepository, ScoringWeights } from '@listinglogic/db';
 import type { GeminiService } from '../../src/services/gemini.service';
+import type { ModelRegistryService } from '../../src/services/model-registry.service';
+import type { OnnxInferenceService } from '../../src/services/onnx-inference.service';
+import type { MlFeatureExtractorService } from '../../src/services/ml-feature-extractor.service';
+import type { EventPublisherService } from '../../src/realtime/event-publisher.service';
 
 import { ScoringService } from '../../src/services/scoring.service';
 import { operatorId, makeLead } from '../factories';
-import type { IsoTimestamp } from '@listinglogic/types';
 
 describe('ScoringService.scoreLead', () => {
   it('computes a composite score and persists history + lead score', async () => {
@@ -46,6 +49,7 @@ describe('ScoringService.scoreLead', () => {
     } as unknown as ScoringWeightsRepository;
 
     const scoreHistoryRepo = {
+      findByLead: vi.fn(async () => []),
       record: vi.fn(async (_operatorId, _leadId, _score, _triggeredBy, _previousComposite) => {
         return undefined;
       }),
@@ -54,6 +58,23 @@ describe('ScoringService.scoreLead', () => {
     const gemini = {
       explainScore: vi.fn(async () => 'Unit test explanation'),
     } as unknown as GeminiService;
+
+    // No trained model registered — forces the heuristic (weighted composite) path.
+    const modelRegistry = {
+      getModel: vi.fn(async () => null),
+    } as unknown as ModelRegistryService;
+
+    const inference = {
+      predict: vi.fn(async () => 0.5),
+    } as unknown as OnnxInferenceService;
+
+    const featureExtractor = {
+      extract: vi.fn(() => new Float32Array()),
+    } as unknown as MlFeatureExtractorService;
+
+    const eventPublisher = {
+      publish: vi.fn(),
+    } as unknown as EventPublisherService;
 
     const logger = {
       child: () => logger,
@@ -70,6 +91,10 @@ describe('ScoringService.scoreLead', () => {
       scoreHistoryRepo,
       weightsRepo,
       gemini,
+      modelRegistry,
+      inference,
+      featureExtractor,
+      eventPublisher,
       logger,
     );
 
@@ -83,5 +108,6 @@ describe('ScoringService.scoreLead', () => {
     expect(leadRepo.applyScore).toHaveBeenCalledTimes(1);
     expect(scoreHistoryRepo.record).toHaveBeenCalledTimes(1);
     expect(gemini.explainScore).toHaveBeenCalledTimes(1);
+    expect(eventPublisher.publish).toHaveBeenCalledTimes(1);
   });
 });
