@@ -13,6 +13,7 @@
 export {
   getDb,
   getFirebaseApp,
+  getFirebaseAuth,
   initializeFirebase,
   pingFirestore,
   shutdownFirebase,

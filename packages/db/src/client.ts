@@ -1,4 +1,5 @@
 import { type App, cert, deleteApp, getApps, initializeApp } from 'firebase-admin/app';
+import { type Auth, getAuth } from 'firebase-admin/auth';
 import { type Firestore, getFirestore } from 'firebase-admin/firestore';
 
 import type { Logger } from '@probivio/logger';
@@ -20,6 +21,7 @@ export interface FirebaseConfig {
 
 let cachedApp: App | null = null;
 let cachedFirestore: Firestore | null = null;
+let cachedAuth: Auth | null = null;
 
 const DEFAULT_APP_NAME = 'probivio';
 
@@ -75,6 +77,25 @@ export function getDb(): Firestore {
 }
 
 /**
+ * Firebase Auth bound to the named `probivio` app.
+ *
+ * Callers MUST use this instead of the bare `getAuth()` from
+ * `firebase-admin/auth` — that resolves against the *default* Firebase app,
+ * which this codebase never initializes (initializeFirebase() always creates
+ * a named app to avoid clashing with other Firebase SDK instances in the
+ * same process, e.g. the emulator in tests). Calling the bare `getAuth()`
+ * throws `app/no-app` in every real environment, including production.
+ */
+export function getFirebaseAuth(): Auth {
+  if (cachedAuth) return cachedAuth;
+
+  const app = getFirebaseApp();
+  cachedAuth = getAuth(app);
+
+  return cachedAuth;
+}
+
+/**
  * Health check — validates that Firestore is reachable.
  * Used by /health endpoint.
  */
@@ -106,6 +127,7 @@ export async function shutdownFirebase(logger?: Logger): Promise<void> {
     } finally {
       cachedApp = null;
       cachedFirestore = null;
+      cachedAuth = null;
     }
   }
 }

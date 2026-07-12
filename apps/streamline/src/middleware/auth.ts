@@ -1,5 +1,5 @@
+import { getFirebaseAuth } from '@probivio/db';
 import { updateContext } from '@probivio/logger';
-import { getAuth } from 'firebase-admin/auth';
 
 import { getLogger } from '../config/logger.js';
 import { UnauthorizedError } from '../errors/app-errors.js';
@@ -47,7 +47,7 @@ export async function requireAuth(
     }
 
     // Verify with revocation check (rejects tokens invalidated by password change)
-    const decoded = await getAuth().verifyIdToken(token, true);
+    const decoded = await getFirebaseAuth().verifyIdToken(token, true);
 
     if (!decoded.uid) {
       throw new UnauthorizedError('Token missing subject');
@@ -102,7 +102,7 @@ export async function optionalAuth(
 
   try {
     const token = header.slice(BEARER_PREFIX.length).trim();
-    const decoded = await getAuth().verifyIdToken(token, true);
+    const decoded = await getFirebaseAuth().verifyIdToken(token, true);
     req.uid = decoded.uid;
     req.operatorId = decoded.uid as OperatorId;
     req.claims = decoded;

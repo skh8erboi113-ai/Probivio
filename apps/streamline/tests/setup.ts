@@ -41,9 +41,18 @@ process.env.APP_VERSION ??= 'test';
 // ----------------------------------------------------------------------------
 // Mock Firebase Auth (so /auth middleware works without emulator or real tokens)
 // ----------------------------------------------------------------------------
-vi.mock('firebase-admin/auth', () => {
+// Production code resolves Auth through @probivio/db's getFirebaseAuth() —
+// NOT the bare `firebase-admin/auth` getAuth() — because the app is
+// initialized under a named Firebase app ("probivio"), and the default-app
+// getAuth() throws `app/no-app` outside of that named app. Mock the
+// higher-level getFirebaseAuth() export instead of the raw SDK so this test
+// double stays aligned with what the middleware actually calls, while
+// preserving every other real @probivio/db export (NotFoundError, etc.).
+vi.mock('@probivio/db', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@probivio/db')>();
   return {
-    getAuth: () => ({
+    ...actual,
+    getFirebaseAuth: () => ({
       verifyIdToken: vi.fn(async (token: string) => {
         // token is the string after "Bearer " header slice
         // Allow tests to pass either "op_test" or anything.

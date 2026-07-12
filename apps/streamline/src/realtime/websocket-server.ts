@@ -1,5 +1,5 @@
 
-import { getAuth } from 'firebase-admin/auth';
+import { getFirebaseAuth } from '@probivio/db';
 import { WebSocketServer, WebSocket } from 'ws';
 
 import { getPubSub, type RealtimeEvent } from './pubsub.js';
@@ -132,7 +132,7 @@ export class RealtimeWebSocketServer {
 
     let uid: string;
     try {
-      const decoded = await getAuth().verifyIdToken(token, true);
+      const decoded = await getFirebaseAuth().verifyIdToken(token, true);
       uid = decoded.uid;
     } catch (err) {
       this.logger.warn('WebSocket auth failed', {

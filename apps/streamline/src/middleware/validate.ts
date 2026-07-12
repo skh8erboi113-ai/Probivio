@@ -27,13 +27,25 @@ export function validate(schemas: Schemas) {
         req.body = (await schemas.body.parseAsync(req.body));
       }
       if (schemas.query) {
-        // Express 5 exposes `req.query` as a getter-only property, so it
-        // can't be reassigned wholesale — mutate the existing object instead.
+        // Express 5 exposes `req.query` as a getter that re-parses
+        // `req.url`'s query string from scratch on every access (see
+        // express/lib/request.js) — it is NOT a cached property. Mutating
+        // the object returned by a previous `req.query` read (e.g. via
+        // `Object.assign(req.query, ...)`) is silently discarded the next
+        // time anything reads `req.query`, so route handlers kept seeing
+        // the raw, un-defaulted, un-coerced query string values (e.g.
+        // `sortBy` as `undefined` and `limit` as a string instead of the
+        // zod-coerced number), which crashed Firestore's `.orderBy()` /
+        // `.limit()` calls in production. Fix: redefine the property
+        // itself (it's `configurable: true`) to a plain value, replacing
+        // Express's getter so downstream code reads the parsed result.
         const parsedQuery = (await schemas.query.parseAsync(req.query)) as Record<string, unknown>;
-        for (const key of Object.keys(req.query)) {
-          delete (req.query as Record<string, unknown>)[key];
-        }
-        Object.assign(req.query, parsedQuery);
+        Object.defineProperty(req, 'query', {
+          value: parsedQuery,
+          writable: true,
+          enumerable: true,
+          configurable: true,
+        });
       }
       if (schemas.params) {
         req.params = (await schemas.params.parseAsync(req.params)) as typeof req.params;
