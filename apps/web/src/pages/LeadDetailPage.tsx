@@ -3,6 +3,7 @@ import { Link, useParams } from 'react-router-dom';
 
 import type { BuyerMatch, Interaction, Lead, SkipTraceResult } from '@listinglogic/types';
 
+import { ScoreDrillDownCard } from '../components/ScoreDrillDownCard';
 import { Badge } from '../components/ui/Badge';
 import { Button } from '../components/ui/Button';
 import { Card } from '../components/ui/Card';
@@ -176,6 +177,8 @@ export function LeadDetailPage() {
               </div>
             ) : null}
           </Card>
+
+          <ScoreDrillDownCard leadId={lead.id} />
 
           <Card accent="purple">
             <SectionTitle>Gemini agent decisions</SectionTitle>

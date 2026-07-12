@@ -2,6 +2,7 @@ import type { Lead } from '@listinglogic/types';
 import type { CreateLeadPayload, UpdateLeadPayload } from '@listinglogic/validators';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
+import { ApiClientError } from '../api/client';
 import { leadsApi, type ListLeadsParams } from '../api/leads.api';
 
 const LEADS_KEY = ['leads'] as const;
@@ -104,5 +105,19 @@ export function useScoreLead() {
 export function useSkipTrace() {
   return useMutation({
     mutationFn: (id: string) => leadsApi.skipTrace(id),
+  });
+}
+
+export function useScoreExplanation(id: string | undefined, lookbackDays = 30) {
+  return useQuery({
+    queryKey: id ? [...leadKeys.detail(id), 'score-explanation', lookbackDays] : ['leads', 'score-explanation', 'null'],
+    queryFn: () => leadsApi.scoreExplanation(id!, lookbackDays),
+    enabled: Boolean(id),
+    staleTime: 60_000,
+    retry: (failureCount, error) => {
+      // 404 means "no score history yet" — not worth retrying.
+      if (error instanceof ApiClientError && error.isNotFound) return false;
+      return failureCount < 2;
+    },
   });
 }

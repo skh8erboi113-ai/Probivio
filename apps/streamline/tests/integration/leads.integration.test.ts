@@ -38,6 +38,31 @@ const mockScoringService = {
     modelVersion: '2.0.0-heuristic',
     scoredAt: new Date().toISOString(),
   }),
+  getScoreDrillDown: vi.fn().mockResolvedValue({
+    score: {
+      composite: 75,
+      dealScore: 70,
+      motivationScore: 80,
+      urgencyScore: 60,
+      confidence: 0.8,
+      explanation: 'Good deal.',
+      recommendation: 'pursue',
+      topFactors: [{ name: 'strong_equity', value: 0.9, weight: 0.4, description: '40% equity' }],
+      modelVersion: '2.0.0-heuristic',
+      scoredAt: new Date().toISOString(),
+    },
+    currentWeights: {
+      dealWeight: 0.4,
+      motivationWeight: 0.4,
+      urgencyWeight: 0.2,
+      version: 'v1',
+      trainedAt: new Date().toISOString(),
+      trainingSampleSize: 10,
+      validationAccuracy: 0.7,
+    },
+    driftAvailable: false,
+    weightDrift: [],
+  }),
 };
 
 const mockAgentService = {
@@ -292,6 +317,39 @@ describe('Lead API — Integration', () => {
         TEST_OPERATOR_ID,
         expect.objectContaining({ leadId: mockLead.id }),
       );
+    });
+  });
+
+  describe('GET /api/leads/:id/score-explanation', () => {
+    it('returns the score drill-down with factor contributions', async () => {
+      const res = await request(app)
+        .get(`/api/leads/${mockLead.id}/score-explanation`)
+        .set(makeAuthHeader());
+
+      expect(res.status).toBe(200);
+      expect(res.body.data.score.topFactors).toHaveLength(1);
+      expect(res.body.data.driftAvailable).toBe(false);
+      expect(mockScoringService.getScoreDrillDown).toHaveBeenCalledWith(TEST_OPERATOR_ID, mockLead.id, 30);
+    });
+
+    it('returns 404 when the lead has no score history yet', async () => {
+      mockScoringService.getScoreDrillDown.mockResolvedValueOnce(null);
+
+      const res = await request(app)
+        .get(`/api/leads/${mockLead.id}/score-explanation`)
+        .set(makeAuthHeader());
+
+      expect(res.status).toBe(404);
+    });
+
+    it('accepts a custom lookbackDays query param', async () => {
+      const res = await request(app)
+        .get(`/api/leads/${mockLead.id}/score-explanation`)
+        .query({ lookbackDays: 90 })
+        .set(makeAuthHeader());
+
+      expect(res.status).toBe(200);
+      expect(mockScoringService.getScoreDrillDown).toHaveBeenCalledWith(TEST_OPERATOR_ID, mockLead.id, 90);
     });
   });
 

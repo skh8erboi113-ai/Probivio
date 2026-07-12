@@ -7,6 +7,7 @@ import {
 } from '@listinglogic/validators';
 import { Router } from 'express';
 
+import { NotFoundError } from '../errors/app-errors.js';
 import { requireAuth } from '../middleware/auth.js';
 import { validate } from '../middleware/validate.js';
 import { stripUndefined } from '../utils/strip-undefined.js';
@@ -22,6 +23,7 @@ import type {
   Lead,
   LeadId,
   OperatorId,
+  ScoreDrillDown,
   SkipTraceResult,
 } from '@listinglogic/types';
 
@@ -210,6 +212,32 @@ export function createLeadRouter(deps: LeadRouterDeps): Router {
       }
 
       const body: ApiResponse<SkipTraceResult> = { data: result, requestId: req.requestId };
+      res.json(body);
+    } catch (err) {
+      next(err);
+    }
+  });
+
+  /**
+   * "Why this score" drill-down: per-dimension factor contributions from
+   * the lead's most recent score, plus how the operator's model weights
+   * have drifted since a configurable lookback (default 30 days). Never
+   * recomputes the score — reads exactly what's already persisted.
+   */
+  router.get('/:id/score-explanation', async (req, res, next) => {
+    try {
+      const lookbackDays = req.query.lookbackDays ? Number(req.query.lookbackDays) : 30;
+      const drillDown = await deps.scoringService.getScoreDrillDown(
+        req.operatorId,
+        String(req.params.id) as LeadId,
+        Number.isFinite(lookbackDays) && lookbackDays > 0 ? lookbackDays : 30,
+      );
+
+      if (!drillDown) {
+        throw new NotFoundError('Score history for lead', String(req.params.id));
+      }
+
+      const body: ApiResponse<ScoreDrillDown> = { data: drillDown, requestId: req.requestId };
       res.json(body);
     } catch (err) {
       next(err);

@@ -14,6 +14,7 @@ export const Collections = {
   INTERACTIONS: 'interactions',
   SCORE_HISTORY: 'score_history',
   SCORING_WEIGHTS: 'scoring_weights',
+  SCORING_WEIGHTS_HISTORY: 'scoring_weights_history',
   IDEMPOTENCY_KEYS: 'idempotency_keys',
 } as const;
 

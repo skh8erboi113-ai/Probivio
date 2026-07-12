@@ -87,3 +87,42 @@ export interface ScoringWeights {
   readonly trainingSampleSize: number;
   readonly validationAccuracy: number;          // 0-1
 }
+
+/** One dimension's weight at two points in time, for a drift comparison. */
+export interface WeightDriftEntry {
+  readonly dimension: 'deal' | 'motivation' | 'urgency';
+  readonly currentWeight: number;
+  readonly previousWeight: number;
+  /** currentWeight - previousWeight, as a fraction (e.g. 0.12 = "12 points more"). */
+  readonly delta: number;
+}
+
+/**
+ * Full "why this score" drill-down for a single lead: the per-dimension
+ * factor contributions from the score itself, plus how the model's weights
+ * have drifted since `comparedAgainst` (the retraining run active as of the
+ * lookback window) — e.g. "urgency now matters 12% more than 30 days ago".
+ * `driftAvailable` is false when there isn't an older weight snapshot to
+ * compare against yet (new operator, or fewer than two retraining runs).
+ */
+export interface ScoreDrillDown {
+  readonly score: ScoreResult;
+  readonly currentWeights: ScoringWeights;
+  readonly driftAvailable: boolean;
+  readonly comparedAgainst?: IsoTimestamp;
+  readonly weightDrift: readonly WeightDriftEntry[];
+}
+
+/**
+ * Append-only log of every weight set the retraining loop has ever produced
+ * for an operator. `ScoringWeightsRepository.getCurrent` only exposes the
+ * latest row; this history is what powers the "how has the model drifted"
+ * view on the lead detail page — e.g. "urgency now matters 12% more than
+ * 30 days ago" — by comparing the current weights against whatever was
+ * active as of a given lookback window.
+ */
+export interface ScoringWeightsHistoryEntry extends AuditFields {
+  readonly id: string;
+  readonly operatorId: OperatorId;
+  readonly weights: ScoringWeights;
+}

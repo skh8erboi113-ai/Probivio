@@ -3,6 +3,7 @@ import type {
   ApiResponse,
   Lead,
   LeadFilters,
+  ScoreDrillDown,
   ScoreResult,
   SkipTraceResult,
 } from '@listinglogic/types';
@@ -48,5 +49,9 @@ export const leadsApi = {
 
   skipTrace(id: string) {
     return api.post<ApiResponse<SkipTraceResult>>(`/api/leads/${id}/skip-trace`, {});
+  },
+
+  scoreExplanation(id: string, lookbackDays = 30) {
+    return api.get<ApiResponse<ScoreDrillDown>>(`/api/leads/${id}/score-explanation`, { lookbackDays });
   },
 };

@@ -25,6 +25,7 @@ import type {
   Lead,
   LeadId,
   OperatorId,
+  ScoreDrillDown,
   ScoreFactor,
   ScoreHistory,
   ScoreResult,
@@ -344,6 +345,72 @@ export class ScoringService {
     if (lead.metrics.arv) parts.push(`ARV: $${(lead.metrics.arv / 100).toLocaleString()}`);
     if (lead.metrics.askingPrice) parts.push(`Asking: $${(lead.metrics.askingPrice / 100).toLocaleString()}`);
     return parts.join(' | ');
+  }
+
+  /**
+   * "Why this score" drill-down for the lead detail page: the most recent
+   * persisted score's per-dimension factor contributions, plus how the
+   * operator's composite weights have drifted since `lookbackDays` ago
+   * (default 30) — e.g. "urgency now matters 12% more than 30 days ago".
+   *
+   * Uses the lead's most recent ScoreHistory entry rather than recomputing
+   * a score, so this reflects exactly what's shown on the lead record —
+   * calling this never re-triggers a Gemini call or ML inference.
+   */
+  public async getScoreDrillDown(
+    operatorId: OperatorId,
+    leadId: LeadId,
+    lookbackDays = 30,
+  ): Promise<ScoreDrillDown | null> {
+    const [history, currentWeights] = await Promise.all([
+      this.scoreHistoryRepo.findByLead(operatorId, leadId, 1),
+      this.weightsRepo.getCurrent(operatorId),
+    ]);
+
+    const latest = history[0];
+    if (!latest) return null;
+
+    const asOf = new Date(Date.now() - lookbackDays * 24 * 60 * 60 * 1000).toISOString() as IsoTimestamp;
+    const previousEntry = await this.weightsRepo.findAsOf(operatorId, asOf);
+
+    if (!previousEntry) {
+      return {
+        score: latest.score,
+        currentWeights,
+        driftAvailable: false,
+        weightDrift: [],
+      };
+    }
+
+    const previous = previousEntry.weights;
+    const weightDrift: ScoreDrillDown['weightDrift'] = [
+      {
+        dimension: 'deal',
+        currentWeight: currentWeights.dealWeight,
+        previousWeight: previous.dealWeight,
+        delta: currentWeights.dealWeight - previous.dealWeight,
+      },
+      {
+        dimension: 'motivation',
+        currentWeight: currentWeights.motivationWeight,
+        previousWeight: previous.motivationWeight,
+        delta: currentWeights.motivationWeight - previous.motivationWeight,
+      },
+      {
+        dimension: 'urgency',
+        currentWeight: currentWeights.urgencyWeight,
+        previousWeight: previous.urgencyWeight,
+        delta: currentWeights.urgencyWeight - previous.urgencyWeight,
+      },
+    ];
+
+    return {
+      score: latest.score,
+      currentWeights,
+      driftAvailable: true,
+      comparedAgainst: previous.trainedAt,
+      weightDrift,
+    };
   }
 }
 
