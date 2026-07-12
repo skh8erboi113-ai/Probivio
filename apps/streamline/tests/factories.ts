@@ -172,6 +172,8 @@ export const makeBuyer = (overrides?: Partial<Buyer>): Buyer =>
 
     notes: 'seed',
     tags: [],
+    notifyOnMatch: true,
+    notificationThreshold: undefined,
     ...overrides,
   }) as Buyer;
 

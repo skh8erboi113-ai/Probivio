@@ -84,6 +84,8 @@ export const createBuyerSchema = z.object({
   proofOfFundsAmount: centsSchema.optional(),
   notes: optionalNoteSchema,
   tags: tagsArraySchema,
+  notifyOnMatch: z.boolean().default(true),
+  notificationThreshold: z.number().min(0).max(100).optional(),
 });
 
 export const updateBuyerSchema = createBuyerSchema.partial().strict();

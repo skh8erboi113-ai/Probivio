@@ -7,6 +7,7 @@ import type { ModelRegistryService } from '../../src/services/model-registry.ser
 import type { OnnxInferenceService } from '../../src/services/onnx-inference.service';
 import type { MlFeatureExtractorService } from '../../src/services/ml-feature-extractor.service';
 import type { EventPublisherService } from '../../src/realtime/event-publisher.service';
+import type { BuyerNotificationService } from '../../src/services/buyer-notification.service';
 
 import { ScoringService } from '../../src/services/scoring.service';
 import { operatorId, makeLead } from '../factories';
@@ -76,6 +77,10 @@ describe('ScoringService.scoreLead', () => {
       publish: vi.fn(),
     } as unknown as EventPublisherService;
 
+    const buyerNotification = {
+      notifyMatchingBuyers: vi.fn(async () => undefined),
+    } as unknown as BuyerNotificationService;
+
     const logger = {
       child: () => logger,
       info: vi.fn(),
@@ -95,6 +100,7 @@ describe('ScoringService.scoreLead', () => {
       inference,
       featureExtractor,
       eventPublisher,
+      buyerNotification,
       logger,
     );
 
@@ -109,5 +115,10 @@ describe('ScoringService.scoreLead', () => {
     expect(scoreHistoryRepo.record).toHaveBeenCalledTimes(1);
     expect(gemini.explainScore).toHaveBeenCalledTimes(1);
     expect(eventPublisher.publish).toHaveBeenCalledTimes(1);
+
+    // Buyer notification dispatch is fire-and-forget; give the microtask queue
+    // a tick to flush the `void ...catch()` before asserting.
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    expect(buyerNotification.notifyMatchingBuyers).toHaveBeenCalledTimes(1);
   });
 });

@@ -1,5 +1,6 @@
 import {
   AgentDecisionLogRepository,
+  BuyerMatchNotificationRepository,
   BuyerRepository,
   IdempotencyRepository,
   InteractionRepository,
@@ -17,6 +18,10 @@ import {
 } from './realtime/event-publisher.service.js';
 import { type AgentService, createAgentService } from './services/agent.service.js';
 import { type BuyerMatchingService, createBuyerMatchingService } from './services/buyer-matching.service.js';
+import {
+  type BuyerNotificationService,
+  createBuyerNotificationService,
+} from './services/buyer-notification.service.js';
 import { createGeminiService, type GeminiService } from './services/gemini.service.js';
 import {
   createMlFeatureExtractorService,
@@ -43,6 +48,7 @@ export interface AppContainer {
 
   readonly leadRepo: LeadRepository;
   readonly buyerRepo: BuyerRepository;
+  readonly buyerMatchNotificationRepo: BuyerMatchNotificationRepository;
   readonly probateRepo: ProbateRepository;
   readonly decisionLogRepo: AgentDecisionLogRepository;
   readonly interactionRepo: InteractionRepository;
@@ -67,6 +73,7 @@ export interface AppContainer {
   readonly scoringService: ScoringService;
   readonly retrainingService: RetrainingService;
   readonly buyerMatchingService: BuyerMatchingService;
+  readonly buyerNotificationService: BuyerNotificationService;
   readonly probateService: ProbateService;
   readonly agentService: AgentService;
 }
@@ -76,6 +83,7 @@ export function buildContainer(): AppContainer {
 
   const leadRepo = new LeadRepository(logger);
   const buyerRepo = new BuyerRepository(logger);
+  const buyerMatchNotificationRepo = new BuyerMatchNotificationRepository(logger);
   const probateRepo = new ProbateRepository(logger);
   const decisionLogRepo = new AgentDecisionLogRepository(logger);
   const interactionRepo = new InteractionRepository(logger);
@@ -97,6 +105,15 @@ export function buildContainer(): AppContainer {
 
   const eventPublisher = createEventPublisherService(logger);
 
+  const buyerMatchingService = createBuyerMatchingService({ leadRepo, buyerRepo, logger });
+  const buyerNotificationService = createBuyerNotificationService({
+    buyerMatching: buyerMatchingService,
+    notificationRepo: buyerMatchNotificationRepo,
+    sendgrid,
+    eventPublisher,
+    logger,
+  });
+
   const scoringService = createScoringService({
     leadRepo,
     interactionRepo,
@@ -107,6 +124,7 @@ export function buildContainer(): AppContainer {
     inference: onnxInference,
     featureExtractor,
     eventPublisher,
+    buyerNotification: buyerNotificationService,
     logger,
   });
 
@@ -118,7 +136,6 @@ export function buildContainer(): AppContainer {
     logger,
   });
 
-  const buyerMatchingService = createBuyerMatchingService({ leadRepo, buyerRepo, logger });
   const probateService = createProbateService({ probateRepo, gemini, pdfParser, logger });
 
   const agentService = createAgentService({
@@ -136,6 +153,7 @@ export function buildContainer(): AppContainer {
     logger,
     leadRepo,
     buyerRepo,
+    buyerMatchNotificationRepo,
     probateRepo,
     decisionLogRepo,
     interactionRepo,
@@ -156,6 +174,7 @@ export function buildContainer(): AppContainer {
     scoringService,
     retrainingService,
     buyerMatchingService,
+    buyerNotificationService,
     probateService,
     agentService,
   };

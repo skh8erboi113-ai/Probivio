@@ -75,6 +75,16 @@ export interface Buyer extends OperatorScoped, AuditFields {
   readonly stats: BuyerStats;
   readonly notes?: string;
   readonly tags: readonly string[];
+  /**
+   * Two-sided marketplace feature: when true (default), this buyer is
+   * proactively emailed whenever a new/rescored lead clears their buy-box
+   * AND matches at or above `notificationThreshold`. Buyers who'd rather
+   * browse the buyer portal themselves can turn this off without losing
+   * match visibility there.
+   */
+  readonly notifyOnMatch: boolean;
+  /** 0-100. Falls back to DEFAULT_NOTIFICATION_THRESHOLD (70) when unset. */
+  readonly notificationThreshold?: number;
 }
 
 export type CreateBuyerInput = Omit<
@@ -95,4 +105,20 @@ export interface BuyerMatch {
   readonly matchReasons: readonly string[];
   readonly disqualifiers: readonly string[];
   readonly estimatedAssignmentFee: Cents;
-  }
+}
+
+export const DEFAULT_NOTIFICATION_THRESHOLD = 70;
+
+/**
+ * Immutable log of every "your buy-box matched a new lead" email actually
+ * sent to a buyer. Exists purely to make the notifier idempotent — the same
+ * (buyerId, leadId) pair is only ever notified once, even if the lead is
+ * rescored multiple times while still above the buyer's threshold.
+ */
+export interface BuyerMatchNotification extends OperatorScoped, AuditFields {
+  readonly id: string;
+  readonly buyerId: BuyerId;
+  readonly leadId: string;
+  readonly matchScore: number;
+  readonly sentAt: string;
+}

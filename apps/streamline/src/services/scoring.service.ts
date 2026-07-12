@@ -6,6 +6,7 @@ import {
 } from '@listinglogic/types';
 
 
+import type { BuyerNotificationService } from './buyer-notification.service.js';
 import type { GeminiService } from './gemini.service.js';
 import type { MlFeatureExtractorService } from './ml-feature-extractor.service.js';
 import type { ModelRegistryService } from './model-registry.service.js';
@@ -44,6 +45,7 @@ export class ScoringService {
     private readonly inference: OnnxInferenceService,
     private readonly featureExtractor: MlFeatureExtractorService,
     private readonly eventPublisher: EventPublisherService,
+    private readonly buyerNotification: BuyerNotificationService,
     logger: Logger,
   ) {
     this.logger = logger.child({ service: 'scoring' });
@@ -129,7 +131,7 @@ export class ScoringService {
     };
 
     const previousComposite = lead.score;
-    await Promise.all([
+    const [updatedLead] = await Promise.all([
       this.leadRepo.applyScore(operatorId, leadId, result),
       this.scoreHistoryRepo.record(operatorId, leadId, result, triggeredBy, previousComposite),
     ]);
@@ -141,6 +143,16 @@ export class ScoringService {
       confidence,
       recommendation: result.recommendation,
       modelVersion,
+    });
+
+    // Two-sided marketplace: proactively notify buyers whose buy-box just
+    // cleared on this lead. Fire-and-forget — a notification failure must
+    // never fail the scoring request that triggered it.
+    void this.buyerNotification.notifyMatchingBuyers(operatorId, updatedLead).catch((err: unknown) => {
+      this.logger.warn('Buyer notification dispatch failed', {
+        leadId,
+        error: err instanceof Error ? err.message : String(err),
+      });
     });
 
     this.logger.info('Lead scored', {
@@ -345,6 +357,7 @@ export function createScoringService(deps: {
   readonly inference: OnnxInferenceService;
   readonly featureExtractor: MlFeatureExtractorService;
   readonly eventPublisher: EventPublisherService;
+  readonly buyerNotification: BuyerNotificationService;
   readonly logger: Logger;
 }): ScoringService {
   return new ScoringService(
@@ -357,6 +370,7 @@ export function createScoringService(deps: {
     deps.inference,
     deps.featureExtractor,
     deps.eventPublisher,
+    deps.buyerNotification,
     deps.logger,
   );
 }

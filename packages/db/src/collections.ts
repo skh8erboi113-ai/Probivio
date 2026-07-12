@@ -8,6 +8,7 @@ export const Collections = {
   OPERATOR_SETTINGS: 'operator_settings',
   LEADS: 'leads',
   BUYERS: 'buyers',
+  BUYER_MATCH_NOTIFICATIONS: 'buyer_match_notifications',
   PROBATE_CASES: 'probate_cases',
   AGENT_DECISION_LOGS: 'agent_decision_logs',
   INTERACTIONS: 'interactions',
@@ -30,4 +31,5 @@ export const Fields = {
   SCORE: 'score',
   TAGS: 'tags',
   LEAD_ID: 'leadId',
+  BUYER_ID: 'buyerId',
 } as const;

@@ -44,6 +44,8 @@ export type { LeadListOptions } from './lead.repository.js';
 export { BuyerRepository } from './buyer.repository.js';
 export type { BuyerFilters, BuyerListOptions } from './buyer.repository.js';
 
+export { BuyerMatchNotificationRepository } from './buyer-match-notification.repository.js';
+
 export { ProbateRepository } from './probate.repository.js';
 export type { ProbateFilters, ProbateListOptions } from './probate.repository.js';
 
