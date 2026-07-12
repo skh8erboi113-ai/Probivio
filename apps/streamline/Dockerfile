@@ -52,13 +52,13 @@ COPY apps/streamline/tsconfig.json ./apps/streamline/
 COPY apps/streamline/tsconfig.build.json ./apps/streamline/
 
 # Build packages first (dependency order matters)
-RUN pnpm --filter @listinglogic/types exec tsc -p tsconfig.json 2>/dev/null || true
-RUN pnpm --filter @listinglogic/validators exec tsc -p tsconfig.json 2>/dev/null || true
-RUN pnpm --filter @listinglogic/logger exec tsc -p tsconfig.json 2>/dev/null || true
-RUN pnpm --filter @listinglogic/db exec tsc -p tsconfig.json 2>/dev/null || true
+RUN pnpm --filter @probivio/types exec tsc -p tsconfig.json 2>/dev/null || true
+RUN pnpm --filter @probivio/validators exec tsc -p tsconfig.json 2>/dev/null || true
+RUN pnpm --filter @probivio/logger exec tsc -p tsconfig.json 2>/dev/null || true
+RUN pnpm --filter @probivio/db exec tsc -p tsconfig.json 2>/dev/null || true
 
 # Build the API
-RUN pnpm --filter @listinglogic/streamline run build
+RUN pnpm --filter @probivio/streamline run build
 
 # ─── Stage 4: Production ──────────────────────────────────────────────────────
 FROM base AS production
@@ -112,4 +112,4 @@ USER nodejs
 
 EXPOSE 8080
 
-CMD ["pnpm", "--filter", "@listinglogic/streamline", "run", "dev"]
+CMD ["pnpm", "--filter", "@probivio/streamline", "run", "dev"]
