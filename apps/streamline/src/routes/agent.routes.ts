@@ -28,7 +28,7 @@ export function createAgentRouter(deps: AgentRouterDeps): Router {
     try {
       const q = req.query as unknown as ReturnType<typeof agentDecisionLogFiltersSchema.parse>;
       const result = await deps.decisionLogRepo.listWithFilters(req.operatorId, {
-        page: q.page,
+        ...(q.cursor && { cursor: q.cursor }),
         limit: q.limit,
         sortBy: q.sortBy,
         sortOrder: q.sortOrder,
@@ -43,9 +43,9 @@ export function createAgentRouter(deps: AgentRouterDeps): Router {
         data: result.items,
         pagination: {
           total: result.total,
-          page: q.page,
           limit: q.limit,
           hasMore: result.hasMore,
+          nextCursor: result.nextCursor,
         },
         requestId: req.requestId,
       };
@@ -58,7 +58,6 @@ export function createAgentRouter(deps: AgentRouterDeps): Router {
   router.get('/decisions/lead/:leadId', async (req, res, next) => {
     try {
       const result = await deps.decisionLogRepo.listWithFilters(req.operatorId, {
-        page: 1,
         limit: 50,
         sortBy: 'createdAt',
         sortOrder: 'desc',
@@ -67,7 +66,7 @@ export function createAgentRouter(deps: AgentRouterDeps): Router {
 
       res.json({
         data: result.items,
-        pagination: { total: result.total, page: 1, limit: 50, hasMore: result.hasMore },
+        pagination: { total: result.total, limit: 50, hasMore: result.hasMore, nextCursor: result.nextCursor },
         requestId: req.requestId,
       });
     } catch (err) {

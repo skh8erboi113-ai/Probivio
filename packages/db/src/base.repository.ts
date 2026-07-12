@@ -9,7 +9,7 @@ import type {
   Transaction,
   WriteBatch,
 } from 'firebase-admin/firestore';
-import { FieldValue } from 'firebase-admin/firestore';
+import { FieldPath, FieldValue } from 'firebase-admin/firestore';
 
 import { getDb } from './client.js';
 import { Fields } from './collections.js';
@@ -22,6 +22,8 @@ import { DatabaseError, ForbiddenError, NotFoundError, OptimisticLockError } fro
  *   - Optimistic concurrency via `updatedAt` timestamp
  *   - Structured logging with timing
  *   - Automatic conversion between domain types and Firestore
+ *   - Cursor-based pagination (see `list()`) — never `.offset()`, which forces
+ *     Firestore to read and discard every skipped document server-side.
  *
  * Extend this class for each entity repository.
  */
@@ -36,13 +38,50 @@ export interface ListResult<T> {
   readonly items: readonly T[];
   readonly total: number;
   readonly hasMore: boolean;
+  /**
+   * Opaque cursor for fetching the next page — pass back as `ListOptions.cursor`.
+   * `null` when there are no more results after this page.
+   */
+  readonly nextCursor: string | null;
 }
 
 export interface ListOptions {
-  readonly page: number;
   readonly limit: number;
   readonly sortBy: string;
   readonly sortOrder: 'asc' | 'desc';
+  /**
+   * Opaque cursor from a previous `ListResult.nextCursor`. Omit (or pass
+   * `undefined`) to fetch the first page. Pagination is forward-only by
+   * design — see docs/ARCHITECTURE.md § Pagination for the rationale.
+   */
+  readonly cursor?: string;
+}
+
+interface CursorPayload {
+  readonly sortValue: unknown;
+  readonly id: string;
+}
+
+/**
+ * Encodes/decodes the opaque pagination cursor. The cursor captures both the
+ * sort field's value and the document ID of the last item on the previous
+ * page, which Firestore requires as a compound cursor to paginate stably
+ * when the sort field has duplicate values across documents.
+ */
+function encodeCursor(payload: CursorPayload): string {
+  return Buffer.from(JSON.stringify(payload)).toString('base64url');
+}
+
+function decodeCursor(cursor: string): CursorPayload {
+  try {
+    const parsed = JSON.parse(Buffer.from(cursor, 'base64url').toString('utf8')) as CursorPayload;
+    if (typeof parsed !== 'object' || parsed === null || !('id' in parsed)) {
+      throw new Error('Malformed cursor payload');
+    }
+    return parsed;
+  } catch {
+    throw new Error('Invalid pagination cursor');
+  }
 }
 
 export abstract class BaseRepository<T extends BaseEntity> {
@@ -107,6 +146,17 @@ export abstract class BaseRepository<T extends BaseEntity> {
     return entity;
   }
 
+  /**
+   * Cursor-paginated list. Uses `startAfter()` instead of `.offset()` so cost
+   * and latency are O(limit) regardless of how deep into the result set the
+   * caller pages — `.offset(N)` makes Firestore read and discard all N
+   * preceding documents server-side on every request, which gets slow and
+   * expensive fast once a collection has more than a page or two of data.
+   *
+   * The trade-off: pagination is forward-only (no "jump to page 50"). Every
+   * caller in this codebase only ever needs Prev/Next, so that's a fine
+   * trade for how much cheaper this is at scale.
+   */
   public async list(
     operatorId: OperatorId,
     options: ListOptions,
@@ -117,19 +167,33 @@ export abstract class BaseRepository<T extends BaseEntity> {
       let query: Query<T> = this.collection.where(Fields.OPERATOR_ID, '==', operatorId);
 
       if (queryBuilder) query = queryBuilder(query);
-      query = query.orderBy(options.sortBy, options.sortOrder);
 
-      // Firestore count aggregation (no full read)
+      // Secondary sort on document ID guarantees a stable total order even
+      // when many documents share the same value for `sortBy` — required
+      // for cursors to be unambiguous.
+      query = query.orderBy(options.sortBy, options.sortOrder).orderBy(FieldPath.documentId(), options.sortOrder);
+
+      if (options.cursor) {
+        const { sortValue, id } = decodeCursor(options.cursor);
+        query = query.startAfter(sortValue, id);
+      }
+
+      // Firestore count aggregation reads only the count, not the documents —
+      // O(1)-ish server-side cost regardless of collection size, unlike offset.
       const [countSnap, dataSnap] = await Promise.all([
         query.count().get(),
-        query
-          .offset((options.page - 1) * options.limit)
-          .limit(options.limit)
-          .get(),
+        query.limit(options.limit).get(),
       ]);
 
       const total = countSnap.data().count;
       const items = dataSnap.docs.map((doc) => doc.data());
+
+      const lastDoc = dataSnap.docs[dataSnap.docs.length - 1];
+      const hasMore = items.length === options.limit && dataSnap.docs.length > 0;
+      const nextCursor =
+        hasMore && lastDoc
+          ? encodeCursor({ sortValue: lastDoc.get(options.sortBy) as unknown, id: lastDoc.id })
+          : null;
 
       this.logger.debug('list complete', {
         count: items.length,
@@ -137,11 +201,7 @@ export abstract class BaseRepository<T extends BaseEntity> {
         durationMs: Date.now() - start,
       });
 
-      return {
-        items,
-        total,
-        hasMore: options.page * options.limit < total,
-      };
+      return { items, total, hasMore, nextCursor };
     } catch (err) {
       throw this.wrapError('list', err);
     }
@@ -314,4 +374,4 @@ export abstract class BaseRepository<T extends BaseEntity> {
     if (!data) throw new NotFoundError(this.entityName, id);
     return data;
   }
-        }
+}

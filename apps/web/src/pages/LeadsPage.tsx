@@ -9,10 +9,23 @@ import { useToast } from '../context/ToastContext';
 import { fonts, palette, spacing } from '../theme';
 
 export function LeadsPage() {
-  const [page, setPage] = useState(1);
-  const { data, isLoading } = useLeads({ page, limit: 25 });
+  // Firestore cursors are forward-only (see docs/ARCHITECTURE.md § Pagination),
+  // so "Prev" is implemented as a client-side stack of cursors we've visited
+  // rather than an arbitrary page-number jump.
+  const [cursorStack, setCursorStack] = useState<readonly (string | undefined)[]>([undefined]);
+  const currentCursor = cursorStack[cursorStack.length - 1];
+  const { data, isLoading } = useLeads({ ...(currentCursor && { cursor: currentCursor }), limit: 25 });
   const deleteLead = useDeleteLead();
   const { notify } = useToast();
+
+  function goNext() {
+    const next = data?.pagination.nextCursor;
+    if (next) setCursorStack((stack) => [...stack, next]);
+  }
+
+  function goPrev() {
+    setCursorStack((stack) => (stack.length > 1 ? stack.slice(0, -1) : stack));
+  }
 
   async function handleDelete(id: string) {
     if (!confirm('Delete this lead?')) return;
@@ -130,8 +143,8 @@ export function LeadsPage() {
               <Button
                 variant="secondary"
                 size="sm"
-                disabled={page === 1}
-                onClick={() => setPage((p) => Math.max(1, p - 1))}
+                disabled={cursorStack.length <= 1}
+                onClick={goPrev}
               >
                 ← Prev
               </Button>
@@ -139,7 +152,7 @@ export function LeadsPage() {
                 variant="secondary"
                 size="sm"
                 disabled={!data.pagination.hasMore}
-                onClick={() => setPage((p) => p + 1)}
+                onClick={goNext}
               >
                 Next →
               </Button>

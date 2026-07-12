@@ -5,6 +5,7 @@ import { loadConfig } from './config/config.js';
 import { getLogger } from './config/logger.js';
 import { buildContainer } from './container.js';
 import { shutdownRateLimit } from './middleware/rate-limit.js';
+import { getPubSub } from './realtime/pubsub.js';
 import { createRealtimeWebSocketServer } from './realtime/websocket-server.js';
 import { createAgentRouter } from './routes/agent.routes.js';
 import { createBuyerRouter } from './routes/buyer.routes.js';
@@ -94,6 +95,7 @@ async function main(): Promise<void> {
         retrainingService: container.retrainingService,
         agentService: container.agentService,
         leadRepo: container.leadRepo,
+        modelRegistry: container.modelRegistry,
         opsAlerts: container.opsAlerts,
         logger,
       }),
@@ -123,7 +125,12 @@ async function main(): Promise<void> {
 
       void (async () => {
         try {
-          await Promise.all([wss.shutdown(), shutdownRateLimit(), shutdownFirebase(logger)]);
+          await Promise.all([
+            wss.shutdown(),
+            getPubSub(logger).shutdown(),
+            shutdownRateLimit(),
+            shutdownFirebase(logger),
+          ]);
         } catch (cleanupErr) {
           logger.error('Cleanup error during shutdown', { error: cleanupErr });
         }

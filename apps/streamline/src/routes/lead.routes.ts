@@ -39,7 +39,7 @@ export function createLeadRouter(deps: LeadRouterDeps): Router {
     try {
       const q = req.query as unknown as ReturnType<typeof leadFiltersSchema.parse>;
       const result = await deps.leadRepo.listWithFilters(req.operatorId, {
-        page: q.page,
+        ...(q.cursor && { cursor: q.cursor }),
         limit: q.limit,
         sortBy: q.sortBy,
         sortOrder: q.sortOrder,
@@ -59,9 +59,9 @@ export function createLeadRouter(deps: LeadRouterDeps): Router {
         data: result.items,
         pagination: {
           total: result.total,
-          page: q.page,
           limit: q.limit,
           hasMore: result.hasMore,
+          nextCursor: result.nextCursor,
         },
         requestId: req.requestId,
       };
@@ -76,7 +76,7 @@ export function createLeadRouter(deps: LeadRouterDeps): Router {
       const leads = await deps.leadRepo.findHotLeads(req.operatorId);
       res.json({
         data: leads,
-        pagination: { total: leads.length, page: 1, limit: leads.length, hasMore: false },
+        pagination: { total: leads.length, limit: leads.length, hasMore: false, nextCursor: null },
         requestId: req.requestId,
       });
     } catch (err) {

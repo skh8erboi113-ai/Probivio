@@ -33,7 +33,7 @@ export function createBuyerRouter(deps: BuyerRouterDeps): Router {
     try {
       const q = req.query as unknown as ReturnType<typeof buyerFiltersSchema.parse>;
       const result = await deps.buyerRepo.listWithFilters(req.operatorId, {
-        page: q.page,
+        ...(q.cursor && { cursor: q.cursor }),
         limit: q.limit,
         sortBy: q.sortBy,
         sortOrder: q.sortOrder,
@@ -49,9 +49,9 @@ export function createBuyerRouter(deps: BuyerRouterDeps): Router {
         data: result.items,
         pagination: {
           total: result.total,
-          page: q.page,
           limit: q.limit,
           hasMore: result.hasMore,
+          nextCursor: result.nextCursor,
         },
         requestId: req.requestId,
       };
@@ -71,7 +71,7 @@ export function createBuyerRouter(deps: BuyerRouterDeps): Router {
 
       res.json({
         data: matches,
-        pagination: { total: matches.length, page: 1, limit: matches.length, hasMore: false },
+        pagination: { total: matches.length, limit: matches.length, hasMore: false, nextCursor: null },
         requestId: req.requestId,
       });
     } catch (err) {

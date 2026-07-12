@@ -10,7 +10,7 @@ import type { CreateLeadPayload, UpdateLeadPayload } from '@listinglogic/validat
 import { api } from './client';
 
 export interface ListLeadsParams extends LeadFilters {
-  readonly page?: number;
+  readonly cursor?: string;
   readonly limit?: number;
   readonly sortBy?: string;
   readonly sortOrder?: 'asc' | 'desc';

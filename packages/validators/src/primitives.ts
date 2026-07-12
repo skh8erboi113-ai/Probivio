@@ -118,8 +118,9 @@ export const tagsArraySchema = z
 
 // ─── Pagination ───────────────────────────────────────────────────────────
 export const paginationSchema = z.object({
-  page: z.coerce.number().int().min(1).max(1000).default(1),
   limit: z.coerce.number().int().min(1).max(100).default(25),
+  /** Opaque cursor from a previous response's `pagination.nextCursor`. Omit for the first page. */
+  cursor: z.string().max(500).optional(),
 });
 
 // ─── Score ────────────────────────────────────────────────────────────────

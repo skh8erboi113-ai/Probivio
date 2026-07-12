@@ -207,6 +207,31 @@ Even if an operator gets a JWT for someone else's account, the `operatorId` comp
 
 ---
 
+## Pagination
+
+All list endpoints (`GET /api/leads`, `/api/buyers`, `/api/agent/decisions`) use **cursor-based
+pagination**, not offset/page-number pagination.
+
+**Why:** Firestore's `.offset(N)` still reads and discards all N preceding documents server-side
+on every request — cost and latency both grow linearly with how deep a client pages in, even
+though it only returns `limit` documents. At `.offset(1000)` you're billed for and waiting on
+1000 document reads to get 25 results back.
+
+**How it works:** every list response includes `pagination.nextCursor` — an opaque, base64url-
+encoded token capturing the sort field's value and document ID of the last item on the page.
+Pass it back as `?cursor=...` to fetch the next page. Internally this becomes a Firestore
+`startAfter(sortValue, documentId)` compound cursor (the document ID is included so pagination
+stays stable even when many documents share the same sort-field value). Cost and latency are
+`O(limit)` regardless of how many pages a client has already fetched.
+
+**Trade-off:** pagination is forward-only — there's no "jump to page 50." Every list UI in this
+app only ever needs Prev/Next (see `LeadsPage.tsx`, which keeps a client-side stack of visited
+cursors to support the Prev button), so this has been a fine trade in practice. If arbitrary
+page-jump is ever needed, that's a sign the UI wants a search/filter affordance instead of deep
+pagination — Firestore just isn't built for offset-style random access at scale.
+
+---
+
 ## Scaling strategy
 
 **Vertical scaling limits:**

@@ -10,6 +10,18 @@ import type { Logger } from '@listinglogic/logger';
  * When its `version` changes, we invalidate the cache and reload from GCS.
  *
  * Falls back to null (→ heuristic scoring) when no trained model exists yet.
+ *
+ * Caching strategy — stale-while-revalidate, not blocking-on-expiry:
+ *   - Cold (nothing cached yet): the caller's request pays the full GCS
+ *     download cost once, synchronously.
+ *   - Warm but stale (past TTL): the caller gets the stale-but-still-valid
+ *     cached model IMMEDIATELY, while a refresh kicks off in the background.
+ *     The next request (or the current one, next time) gets the fresh copy.
+ *     A model that's a few minutes past its hour-long TTL is not meaningfully
+ *     worse than one that's fresh — but blocking a live scoring request on a
+ *     multi-hundred-KB GCS download is a real, avoidable latency hit.
+ *   - In-flight de-duplication: concurrent cold-start requests for the same
+ *     operator share one GCS download instead of each starting their own.
  */
 
 export interface ModelMetadata {
@@ -29,6 +41,7 @@ export interface CachedModel {
 }
 
 const CACHE_TTL_MS = 60 * 60 * 1000; // 1 hour
+const REFRESH_LOCK_TTL_MS = 30_000; // avoid piling up background refreshes if GCS is slow/down
 
 interface CacheEntry {
   readonly model: CachedModel | null;
@@ -37,6 +50,10 @@ interface CacheEntry {
 
 export class ModelRegistryService {
   private readonly cache = new Map<string, CacheEntry>();
+  /** In-flight loads, keyed by operator — de-dupes concurrent cold-start requests. */
+  private readonly inFlight = new Map<string, Promise<CachedModel | null>>();
+  /** Timestamp of the last background refresh kicked off per operator, to rate-limit refresh attempts. */
+  private readonly refreshStartedAt = new Map<string, number>();
   private readonly storage: Storage;
   private readonly logger: Logger;
 
@@ -50,18 +67,78 @@ export class ModelRegistryService {
 
   public async getModel(operatorId: string): Promise<CachedModel | null> {
     const cached = this.cache.get(operatorId);
-    const isFresh = cached && Date.now() - cached.loadedAt < CACHE_TTL_MS;
 
-    if (cached && isFresh) return cached.model;
+    if (!cached) {
+      // Cold: nothing cached yet, must block on the load (de-duped if concurrent).
+      return this.loadAndCache(operatorId);
+    }
 
-    // Reload
-    const model = await this.loadFromStorage(operatorId);
-    this.cache.set(operatorId, { model, loadedAt: Date.now() });
-    return model;
+    const isStale = Date.now() - cached.loadedAt >= CACHE_TTL_MS;
+    if (isStale) {
+      // Warm-but-stale: serve what we have immediately, refresh in the background.
+      this.scheduleBackgroundRefresh(operatorId);
+    }
+
+    return cached.model;
   }
 
   public invalidate(operatorId: string): void {
     this.cache.delete(operatorId);
+    this.refreshStartedAt.delete(operatorId);
+  }
+
+  /**
+   * Pre-load models for a set of operators — call at server boot with, e.g.,
+   * the most recently active operators, so their first scoring request after
+   * a cold start/deploy doesn't pay the GCS download latency inline.
+   * Failures are logged and swallowed; a warm-up miss just means that
+   * operator's next request falls back to the normal cold-load path.
+   */
+  public async warmUp(operatorIds: readonly string[]): Promise<void> {
+    if (operatorIds.length === 0) return;
+
+    const start = Date.now();
+    const results = await Promise.allSettled(operatorIds.map((id) => this.loadAndCache(id)));
+
+    const succeeded = results.filter((r) => r.status === 'fulfilled' && r.value !== null).length;
+    this.logger.info('Model registry warm-up complete', {
+      requested: operatorIds.length,
+      loaded: succeeded,
+      durationMs: Date.now() - start,
+    });
+  }
+
+  private scheduleBackgroundRefresh(operatorId: string): void {
+    const lastAttempt = this.refreshStartedAt.get(operatorId);
+    if (lastAttempt && Date.now() - lastAttempt < REFRESH_LOCK_TTL_MS) {
+      // A refresh is already in flight (or very recently failed) — don't pile on.
+      return;
+    }
+    this.refreshStartedAt.set(operatorId, Date.now());
+
+    void this.loadAndCache(operatorId).catch((err: unknown) => {
+      this.logger.warn('Background model refresh failed — keeping stale cache', {
+        operatorId,
+        error: err instanceof Error ? err.message : String(err),
+      });
+    });
+  }
+
+  private async loadAndCache(operatorId: string): Promise<CachedModel | null> {
+    const existing = this.inFlight.get(operatorId);
+    if (existing) return existing;
+
+    const loadPromise = this.loadFromStorage(operatorId)
+      .then((model) => {
+        this.cache.set(operatorId, { model, loadedAt: Date.now() });
+        return model;
+      })
+      .finally(() => {
+        this.inFlight.delete(operatorId);
+      });
+
+    this.inFlight.set(operatorId, loadPromise);
+    return loadPromise;
   }
 
   private async loadFromStorage(operatorId: string): Promise<CachedModel | null> {
@@ -116,4 +193,4 @@ export function createModelRegistryService(deps: {
   readonly logger: Logger;
 }): ModelRegistryService {
   return new ModelRegistryService(deps.weightsRepo, deps.logger);
-        }
+}

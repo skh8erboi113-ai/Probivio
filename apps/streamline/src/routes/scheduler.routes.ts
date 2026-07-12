@@ -4,6 +4,7 @@ import { Router } from 'express';
 import { UnauthorizedError } from '../errors/app-errors.js';
 
 import type { AgentService } from '../services/agent.service.js';
+import type { ModelRegistryService } from '../services/model-registry.service.js';
 import type { OpsAlertsService } from '../services/ops-alerts.service.js';
 import type { RetrainingService } from '../services/retraining.service.js';
 import type { LeadRepository } from '@listinglogic/db';
@@ -23,6 +24,7 @@ export interface SchedulerRouterDeps {
   readonly retrainingService: RetrainingService;
   readonly agentService: AgentService;
   readonly leadRepo: LeadRepository;
+  readonly modelRegistry: ModelRegistryService;
   readonly opsAlerts: OpsAlertsService;
   readonly logger: Logger;
 }
@@ -139,6 +141,27 @@ export function createSchedulerRouter(deps: SchedulerRouterDeps): Router {
         blocked: blockedCount,
         errors: errorCount,
       });
+    } catch (err) {
+      next(err);
+    }
+  });
+
+  // Warms the ONNX model cache for a set of operators — call this right
+  // after a new revision deploys (or on a short interval) with your most
+  // active operator IDs so their first scoring request doesn't pay the GCS
+  // download cost inline. See ModelRegistryService for the caching strategy.
+  router.post('/warm-model-cache', async (req, res, next) => {
+    try {
+      const body = req.body as { readonly operatorIds?: readonly string[] };
+      const operatorIds = body.operatorIds ?? [];
+
+      if (operatorIds.length === 0) {
+        res.json({ warmed: 0, message: 'No operators specified' });
+        return;
+      }
+
+      await deps.modelRegistry.warmUp(operatorIds);
+      res.json({ warmed: operatorIds.length });
     } catch (err) {
       next(err);
     }

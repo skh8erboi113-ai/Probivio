@@ -14,12 +14,14 @@ export interface ApiListResponse<T> {
   readonly data: readonly T[];
   readonly pagination: {
     readonly total: number;
-    readonly page: number;
     readonly limit: number;
     readonly hasMore: boolean;
+    /** Opaque cursor to fetch the next page — pass as `?cursor=` on the next request. `null` if this is the last page. */
+    readonly nextCursor: string | null;
   };
   readonly requestId: string;
 }
+
 
 // ─── Errors ───────────────────────────────────────────────────────────────
 export const ErrorCode = {

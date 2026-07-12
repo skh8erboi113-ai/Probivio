@@ -59,7 +59,7 @@ export function createInteractionRouter(deps: InteractionRouterDeps): Router {
       );
       res.json({
         data: interactions,
-        pagination: { total: interactions.length, page: 1, limit: interactions.length, hasMore: false },
+        pagination: { total: interactions.length, limit: interactions.length, hasMore: false, nextCursor: null },
         requestId: req.requestId,
       });
     } catch (err) {
