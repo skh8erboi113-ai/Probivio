@@ -21,8 +21,8 @@
     "clean": "turbo run clean && rm -rf node_modules"
   },
   "devDependencies": {
-    "prettier": "^3.9.5",
-    "turbo": "^2.10.4"
+    "prettier": "^3.9.6",
+    "turbo": "^2.10.6"
   },
   "pnpm": {
     "overrides": {
