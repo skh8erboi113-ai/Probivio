@@ -24,7 +24,7 @@
   "dependencies": {
     "@probivio/logger": "workspace:*",
     "@probivio/types": "workspace:*",
-    "firebase-admin": "^14.1.0"
+    "firebase-admin": "^14.2.0"
   },
   "devDependencies": {
     "@typescript-eslint/eslint-plugin": "^8.63.0",
